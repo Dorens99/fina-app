@@ -464,6 +464,19 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
 
 <script src="/.netlify/functions/config"></script>
 <script>
+function renderMarkdown(t){
+  t=t.replace(/^### (.+)$/gm,'<strong style="font-size:.9rem">$1</strong>');
+  t=t.replace(/^## (.+)$/gm,'<strong style="font-size:.95rem">$1</strong>');
+  t=t.replace(/^# (.+)$/gm,'<strong style="font-size:1rem">$1</strong>');
+  t=t.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+  t=t.replace(/\*([^*]+)\*/g,'<em>$1</em>');
+  t=t.replace(/^- (.+)$/gm,'<span style="display:block;padding-left:12px;margin:2px 0">• $1</span>');
+  t=t.replace(/^(\d+)[.] (.+)$/gm,'<span style="display:block;padding-left:12px;margin:2px 0"><strong>$1.</strong> $2</span>');
+  t=t.split('\n\n').join('<br><br>');
+  t=t.split('\n').join('<br>');
+  return t;
+}
+
 function showResetMode(){
   document.getElementById('login-fields').style.display='none';
   document.getElementById('reset-fields').style.display='block';
@@ -788,7 +801,7 @@ async function loadAIHint(){
       system:'Ты краткий финансовый советник в приложении Fina. 1-2 предложения на русском. Конкретные цифры.',
       messages:[{role:'user',content:getFinanceSummary()+' Дай один совет.'}]
     });
-    el.textContent=data.content?.[0]?.text||'Продолжай вести учёт!';
+    el.innerHTML=renderMarkdown(data.content?.[0]?.text||'Продолжай вести учёт!');
   }catch(e){el.textContent='Добавляй расходы — AI проанализирует и даст советы!';}
 }
 
@@ -806,7 +819,7 @@ window.sendChat=async()=>{
       messages:chatHistory.slice(-10)
     });
     const text=data.content?.[0]?.text||'Не могу ответить сейчас.';
-    typing.innerHTML=`<div class="msg-tag">✦ Fina AI</div>${text}`;
+    renderAIMsg(typing, text);
     chatHistory.push({role:'assistant',content:text});
   }catch(e){typing.innerHTML='<div class="msg-tag">✦ Fina AI</div>Ошибка соединения. Попробуй позже.';}
 };
@@ -819,6 +832,10 @@ function addMsg(role,html,ret=false){
   else div.textContent=html;
   msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;
   if(ret)return div;
+}
+
+function renderAIMsg(el, text){
+  el.innerHTML=`<div class="msg-tag">✦ Fina AI</div>${renderMarkdown(text)}`;
 }
 
 // CURRENCY
