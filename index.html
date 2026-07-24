@@ -428,13 +428,14 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
   </div>
 </div>
 
+<script src="/.netlify/functions/config"></script>
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signInWithPopup,GoogleAuthProvider,onAuthStateChanged,signOut,updateProfile,sendPasswordResetEmail}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import{getFirestore,collection,addDoc,query,where,onSnapshot,doc,setDoc,getDoc,updateDoc,serverTimestamp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const fbConfig={
-  apiKey:"AIzaSyAFkhR0Umtg3gi0I6S5cuRTPUWmP7UXGao",
+  apiKey:window.__FB_API_KEY__,
   authDomain:"fina-app-eb51c.firebaseapp.com",
   projectId:"fina-app-eb51c",
   storageBucket:"fina-app-eb51c.firebasestorage.app",
