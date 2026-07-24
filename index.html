@@ -98,6 +98,14 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
 .tx-amount.exp{color:var(--red)}.tx-amount.inc{color:var(--green)}
 .tx-date{font-size:.66rem;color:var(--muted)}
 .tx-empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:.86rem}
+.budget-item{background:white;border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all .2s}
+.budget-item:hover{border-color:var(--amber2)}
+.budget-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.budget-cat{display:flex;align-items:center;gap:8px;font-size:.88rem;font-weight:600}
+.budget-amounts{font-size:.8rem;color:var(--muted)}
+.budget-bar-wrap{height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.budget-bar{height:8px;border-radius:4px;transition:width .5s ease}
+.budget-info{display:flex;justify-content:space-between;margin-top:6px;font-size:.75rem}
 .tx-empty .ico{font-size:2.5rem;margin-bottom:10px}
 
 /* STATS */
@@ -342,6 +350,19 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
         </div>
       </div>
 
+      <!-- BUDGET TAB -->
+      <div class="tab-pane" id="tab-budget">
+        <div style="padding:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div style="font-family:'DM Serif Display',serif;font-size:1.05rem">Бюджет на месяц</div>
+            <button onclick="openAddBudgetModal()" style="background:var(--amber2);color:var(--dark);border:none;border-radius:10px;padding:8px 14px;font-family:'Sora',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer">+ Добавить</button>
+          </div>
+          <div id="budget-list">
+            <div class="tx-empty"><div class="ico">🎯</div>Нет бюджетов.<br>Нажми "+ Добавить" чтобы создать.</div>
+          </div>
+        </div>
+      </div>
+
       <!-- AI TAB -->
       <div class="tab-pane" id="tab-ai">
         <div class="ai-chat-wrap">
@@ -398,6 +419,7 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
     <nav class="bottom-nav">
       <button class="nav-item active" id="nav-home" onclick="showTab('home')"><span class="nav-ico">🏠</span><span class="nav-lbl">Главная</span></button>
       <button class="nav-item" id="nav-stats" onclick="showTab('stats')"><span class="nav-ico">📊</span><span class="nav-lbl">Статистика</span></button>
+      <button class="nav-item" id="nav-budget" onclick="showTab('budget')"><span class="nav-ico">🎯</span><span class="nav-lbl">Бюджет</span></button>
       <button class="nav-item" id="nav-ai" onclick="showTab('ai')"><span class="nav-ico">🤖</span><span class="nav-lbl">AI</span></button>
       <button class="nav-item" id="nav-profile" onclick="showTab('profile')"><span class="nav-ico">👤</span><span class="nav-lbl">Профиль</span></button>
     </nav>
@@ -448,6 +470,19 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
     <input class="field-inp" id="pass-confirm" type="password" placeholder="Повтори новый пароль" autocomplete="new-password"/>
     <button class="save-btn" onclick="savePassword()">Сохранить пароль</button>
     <button onclick="document.getElementById('modal-password').classList.remove('show')" style="width:100%;background:transparent;border:none;padding:14px;font-family:'Sora',sans-serif;font-size:.86rem;color:var(--muted);cursor:pointer;margin-top:8px">Отмена</button>
+  </div>
+</div>
+
+<!-- ADD BUDGET MODAL -->
+<div class="modal-overlay" id="modal-budget">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="budget-modal-title">Новый бюджет</div>
+    <div class="field-label">Категория</div>
+    <div class="cat-grid" id="budget-cat-grid"></div>
+    <div class="field-label">Лимит в месяц (<span id="budget-cur">$</span>)</div>
+    <input class="field-inp" id="budget-limit" type="number" placeholder="Например: 500" inputmode="decimal"/>
+    <button class="save-btn" onclick="saveBudget()">Сохранить бюджет</button>
   </div>
 </div>
 
@@ -560,6 +595,7 @@ async function enterApp(user){
   // Update UI with correct currency from Firebase
   updateUI();
   loadTransactions();
+  loadBudgets();
   loadAIHint();
 }
 
@@ -690,7 +726,7 @@ window.showTab=t=>{
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
   document.getElementById('nav-'+t).classList.add('active');
-  document.getElementById('add-fab').style.display=t==='ai'?'none':'flex';
+  document.getElementById('add-fab').style.display=(t==='ai'||t==='budget')?'none':'flex';
   if(t==='stats')renderStats();
 };
 
@@ -717,7 +753,7 @@ function loadTransactions(){
         const db2=b.createdAt?.toDate?.()??new Date(0);
         return db2-da;
       });
-    renderTx();updateBalance();renderStats();loadAIHint();
+    renderTx();updateBalance();renderStats();renderBudgets();loadAIHint();
   },err=>console.error(err));
 }
 
@@ -1071,6 +1107,118 @@ if(window.Telegram?.WebApp?.initData){
   const tgBtn=document.getElementById('tg-login-btn');
   if(tgBtn) tgBtn.style.display='flex';
 }
+
+// BUDGET
+let budgets=[];
+let editBudgetId=null;
+let budgetSelectedCat='🛒';
+
+function loadBudgets(){
+  if(!currentUser)return;
+  const q=query(collection(db,'budgets'),where('uid','==',currentUser.uid));
+  onSnapshot(q,snap=>{
+    budgets=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderBudgets();
+  });
+}
+
+function renderBudgets(){
+  const list=document.getElementById('budget-list');
+  if(!budgets.length){
+    list.innerHTML='<div class="tx-empty"><div class="ico">🎯</div>Нет бюджетов.<br>Нажми "+ Добавить" чтобы создать.</div>';
+    return;
+  }
+  const now=new Date();
+  const monthTx=transactions.filter(t=>{
+    const d=t.createdAt?.toDate?.()??new Date();
+    return t.type==='expense'&&d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+  });
+
+  list.innerHTML=budgets.map(b=>{
+    const spent=monthTx.filter(t=>t.category===b.category||t.catName===b.catName).reduce((s,t)=>s+Number(t.amount),0);
+    const pct=Math.min((spent/b.limit)*100,100);
+    const remaining=b.limit-spent;
+    const over=spent>b.limit;
+    const color=pct>90?'var(--red)':pct>70?'var(--amber2)':'var(--green)';
+    return`<div class="budget-item" onclick="openEditBudget('${b.id}')">
+      <div class="budget-header">
+        <div class="budget-cat"><span>${b.category}</span><span>${b.catName}</span></div>
+        <div class="budget-amounts" style="color:${over?'var(--red)':'var(--muted)'}">
+          ${userCurrency}${spent.toFixed(0)} / ${userCurrency}${b.limit}
+        </div>
+      </div>
+      <div class="budget-bar-wrap">
+        <div class="budget-bar" style="width:${pct}%;background:${color}"></div>
+      </div>
+      <div class="budget-info">
+        <span style="color:${over?'var(--red)':'var(--muted)'}">
+          ${over?'⚠️ Превышен на '+userCurrency+Math.abs(remaining).toFixed(0):'Осталось '+userCurrency+remaining.toFixed(0)}
+        </span>
+        <span style="color:${color}">${Math.round(pct)}%</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.openAddBudgetModal=()=>{
+  editBudgetId=null;
+  document.getElementById('budget-modal-title').textContent='Новый бюджет';
+  document.getElementById('budget-limit').value='';
+  document.getElementById('budget-cur').textContent=userCurrency;
+  budgetSelectedCat='🛒';
+  buildBudgetCatGrid();
+  document.getElementById('modal-budget').classList.add('show');
+};
+
+window.openEditBudget=(id)=>{
+  const b=budgets.find(x=>x.id===id);
+  if(!b)return;
+  editBudgetId=id;
+  budgetSelectedCat=b.category;
+  document.getElementById('budget-modal-title').textContent='Редактировать бюджет';
+  document.getElementById('budget-limit').value=b.limit;
+  document.getElementById('budget-cur').textContent=userCurrency;
+  buildBudgetCatGrid(b.category);
+  document.getElementById('modal-budget').classList.add('show');
+};
+
+function buildBudgetCatGrid(active){
+  budgetSelectedCat=active||'🛒';
+  document.getElementById('budget-cat-grid').innerHTML=CATS_EXP.map(cat=>
+    `<div class="cat-btn${cat.ico===budgetSelectedCat?' active':''}" onclick="selectBudgetCat(this,'${cat.ico}','${cat.lbl}')">
+      <span class="ico">${cat.ico}</span><span class="lbl">${cat.lbl}</span>
+    </div>`).join('');
+}
+
+let budgetSelectedCatName='Еда';
+window.selectBudgetCat=(el,ico,lbl)=>{
+  document.querySelectorAll('#budget-cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  budgetSelectedCat=ico;
+  budgetSelectedCatName=lbl;
+};
+
+window.saveBudget=async()=>{
+  const limit=parseFloat(document.getElementById('budget-limit').value);
+  if(!limit||limit<=0){showToast('Введи лимит');return}
+  const cat=CATS_EXP.find(c=>c.ico===budgetSelectedCat)||CATS_EXP[0];
+  try{
+    if(editBudgetId){
+      await updateDoc(doc(db,'budgets',editBudgetId),{limit,category:cat.ico,catName:cat.lbl});
+      showToast('✓ Бюджет обновлён');
+    } else {
+      await addDoc(collection(db,'budgets'),{
+        uid:currentUser.uid,limit,
+        category:cat.ico,catName:cat.lbl,
+        createdAt:serverTimestamp()
+      });
+      showToast('✓ Бюджет создан');
+    }
+    document.getElementById('modal-budget').classList.remove('show');
+  }catch(e){showToast('Ошибка сохранения');}
+};
+
+document.getElementById('modal-budget').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('show');});
 
 // TOAST
 function showToast(msg){
