@@ -222,9 +222,19 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
       <div id="form-login">
         <div class="auth-form">
           <input class="auth-inp" id="login-email" type="email" placeholder="Email" autocomplete="email" autocapitalize="off"/>
-          <input class="auth-inp" id="login-pass" type="password" placeholder="Пароль" autocomplete="current-password"/>
-          <div class="forgot-link"><span onclick="doReset()">Восстановить пароль</span></div>
-          <button class="auth-btn" onclick="doLogin()">Войти</button>
+          
+          <!-- Поля только для входа -->
+          <div id="login-fields">
+            <input class="auth-inp" id="login-pass" type="password" placeholder="Пароль" autocomplete="current-password" style="margin-top:10px"/>
+            <div class="forgot-link"><span onclick="showResetMode()">Восстановить пароль</span></div>
+            <button class="auth-btn" onclick="doLogin()">Войти</button>
+          </div>
+
+          <!-- Поля только для сброса пароля -->
+          <div id="reset-fields" style="display:none">
+            <button class="auth-btn" onclick="doReset()" style="margin-top:10px">Отправить письмо</button>
+            <button onclick="hideResetMode()" style="width:100%;background:transparent;border:none;padding:12px;font-family:'Sora',sans-serif;font-size:.84rem;color:#666;cursor:pointer;margin-top:4px">← Вернуться ко входу</button>
+          </div>
         </div>
         <div class="auth-divider"><div class="auth-divider-line"></div><div class="auth-divider-text">или</div><div class="auth-divider-line"></div></div>
         <button class="auth-google" onclick="doGoogle()">
@@ -453,6 +463,18 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
 </div>
 
 <script src="/.netlify/functions/config"></script>
+<script>
+function showResetMode(){
+  document.getElementById('login-fields').style.display='none';
+  document.getElementById('reset-fields').style.display='block';
+  var e=document.getElementById('auth-err');e.className='auth-err';e.style.cssText='';
+}
+function hideResetMode(){
+  document.getElementById('login-fields').style.display='block';
+  document.getElementById('reset-fields').style.display='none';
+  var e=document.getElementById('auth-err');e.className='auth-err';e.style.cssText='';
+}
+</script>
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signInWithPopup,GoogleAuthProvider,onAuthStateChanged,signOut,updateProfile,sendPasswordResetEmail,updatePassword,EmailAuthProvider,reauthenticateWithCredential,linkWithCredential}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -535,6 +557,8 @@ window.doGoogle=async()=>{
     if(!s.exists())await setDoc(doc(db,'users',cred.user.uid),{name:cred.user.displayName||'',email:cred.user.email,currency:'$',createdAt:serverTimestamp()});
   }catch(e){if(e.code!=='auth/popup-closed-by-user')showErr(firebaseErr(e.code));}
 };
+
+
 
 window.doReset=async()=>{
   const email=document.getElementById('login-email').value.trim();
