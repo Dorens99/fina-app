@@ -539,7 +539,7 @@ const db=getFirestore(fbApp);
 const provider=new GoogleAuthProvider();
 
 // STATE
-let currentUser=null,userCurrency=sessionStorage.getItem('fina_currency')||'$',transactions=[],txType='expense',amountStr='0',selectedCat='🛒',currentPeriod='month',chatHistory=[];
+let currentUser=null,userCurrency='$',transactions=[],txType='expense',amountStr='0',selectedCat='🛒',currentPeriod='month',chatHistory=[];
 
 const CATS_EXP=[{ico:'🛒',lbl:'Еда'},{ico:'🏠',lbl:'Жильё'},{ico:'🚗',lbl:'Транспорт'},{ico:'☕',lbl:'Кафе'},{ico:'💊',lbl:'Здоровье'},{ico:'🎮',lbl:'Развлечения'},{ico:'👕',lbl:'Одежда'},{ico:'📦',lbl:'Другое'}];
 const CATS_INC=[{ico:'💼',lbl:'Зарплата'},{ico:'🎁',lbl:'Подарок'},{ico:'📈',lbl:'Инвестиции'},{ico:'🏦',lbl:'Перевод'},{ico:'💡',lbl:'Фриланс'},{ico:'🏠',lbl:'Аренда'},{ico:'📦',lbl:'Продажа'},{ico:'✨',lbl:'Другое'}];
@@ -547,18 +547,19 @@ const CATS_INC=[{ico:'💼',lbl:'Зарплата'},{ico:'🎁',lbl:'Подар�
 // ENTER APP
 async function enterApp(user){
   currentUser=user;
-  // Load currency first before showing UI
+  // Show app immediately
+  showScreen('app');
+  buildCatGrid();
+  // Load user settings from Firebase
   try{
     const s=await getDoc(doc(db,'users',user.uid));
     if(s.exists()){
       userCurrency=s.data().currency||'$';
     }
   }catch(e){}
-  // Now update UI with correct currency
+  // Update UI with correct currency from Firebase
   updateUI();
-  showScreen('app');
   loadTransactions();
-  buildCatGrid();
   loadAIHint();
 }
 
@@ -928,7 +929,6 @@ function renderAIMsg(el, text){
 // CURRENCY
 window.setCurrency=async(sym,label)=>{
   userCurrency=sym;
-  sessionStorage.setItem('fina_currency',sym);
   if(currentUser)await updateDoc(doc(db,'users',currentUser.uid),{currency:sym}).catch(()=>{});
   document.getElementById('cur-setting').textContent=label;
   ['cur-badge','bal-sym'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=sym;});
