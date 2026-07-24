@@ -106,6 +106,19 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
 .budget-bar-wrap{height:8px;background:var(--border);border-radius:4px;overflow:hidden}
 .budget-bar{height:8px;border-radius:4px;transition:width .5s ease}
 .budget-info{display:flex;justify-content:space-between;margin-top:6px;font-size:.75rem}
+.goal-item{background:white;border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:10px;cursor:pointer;transition:all .2s}
+.goal-item:hover{border-color:var(--amber2)}
+.goal-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.goal-emoji{font-size:1.6rem;width:44px;height:44px;background:var(--pale);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.goal-info{flex:1}
+.goal-name{font-size:.9rem;font-weight:700;margin-bottom:2px}
+.goal-amounts{font-size:.78rem;color:var(--muted)}
+.goal-bar-wrap{height:10px;background:var(--border);border-radius:5px;overflow:hidden;margin-bottom:8px}
+.goal-bar{height:10px;border-radius:5px;transition:width .5s ease;background:linear-gradient(90deg,var(--amber),var(--amber2))}
+.goal-footer{display:flex;justify-content:space-between;font-size:.76rem}
+.goal-ai{background:linear-gradient(135deg,rgba(224,123,0,.06),rgba(245,166,35,.03));border:1px solid rgba(224,123,0,.15);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:.76rem;color:var(--amber);line-height:1.5}
+.emoji-btn{font-size:1.4rem;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:white;border:1.5px solid var(--border);transition:all .2s}
+.emoji-btn.active{border-color:var(--amber);background:var(--pale)}
 .tx-empty .ico{font-size:2.5rem;margin-bottom:10px}
 
 /* STATS */
@@ -385,6 +398,19 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
         </div>
       </div>
 
+      <!-- GOALS TAB -->
+      <div class="tab-pane" id="tab-goals">
+        <div style="padding:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div style="font-family:'DM Serif Display',serif;font-size:1.05rem">Мои цели</div>
+            <button onclick="openAddGoalModal()" style="background:var(--amber2);color:var(--dark);border:none;border-radius:10px;padding:8px 14px;font-family:'Sora',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer">+ Добавить</button>
+          </div>
+          <div id="goals-list">
+            <div class="tx-empty"><div class="ico">⭐</div>Нет целей.<br>Нажми "+ Добавить" чтобы создать.</div>
+          </div>
+        </div>
+      </div>
+
       <!-- AI TAB -->
       <div class="tab-pane" id="tab-ai">
         <div class="ai-chat-wrap">
@@ -442,7 +468,7 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
       <button class="nav-item active" id="nav-home" onclick="showTab('home')"><span class="nav-ico">🏠</span><span class="nav-lbl">Главная</span></button>
       <button class="nav-item" id="nav-stats" onclick="showTab('stats')"><span class="nav-ico">📊</span><span class="nav-lbl">Статистика</span></button>
       <button class="nav-item" id="nav-budget" onclick="showTab('budget')"><span class="nav-ico">🎯</span><span class="nav-lbl">Бюджет</span></button>
-      <button class="nav-item" id="nav-ai" onclick="showTab('ai')"><span class="nav-ico">🤖</span><span class="nav-lbl">AI</span></button>
+      <button class="nav-item" id="nav-goals" onclick="showTab('goals')"><span class="nav-ico">⭐</span><span class="nav-lbl">Цели</span></button>
       <button class="nav-item" id="nav-profile" onclick="showTab('profile')"><span class="nav-ico">👤</span><span class="nav-lbl">Профиль</span></button>
     </nav>
   </div>
@@ -492,6 +518,37 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
     <input class="field-inp" id="pass-confirm" type="password" placeholder="Повтори новый пароль" autocomplete="new-password"/>
     <button class="save-btn" onclick="savePassword()">Сохранить пароль</button>
     <button onclick="document.getElementById('modal-password').classList.remove('show')" style="width:100%;background:transparent;border:none;padding:14px;font-family:'Sora',sans-serif;font-size:.86rem;color:var(--muted);cursor:pointer;margin-top:8px">Отмена</button>
+  </div>
+</div>
+
+<!-- ADD GOAL MODAL -->
+<div class="modal-overlay" id="modal-goal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="goal-modal-title">Новая цель</div>
+    <div class="field-label">Название цели</div>
+    <input class="field-inp" id="goal-name" placeholder="Например: Отпуск, Машина, Телефон..."/>
+    <div class="field-label">Эмодзи</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px" id="goal-emoji-grid">
+      <span onclick="selectGoalEmoji(this,'✈️')" class="emoji-btn active">✈️</span>
+      <span onclick="selectGoalEmoji(this,'🚗')" class="emoji-btn">🚗</span>
+      <span onclick="selectGoalEmoji(this,'🏠')" class="emoji-btn">🏠</span>
+      <span onclick="selectGoalEmoji(this,'📱')" class="emoji-btn">📱</span>
+      <span onclick="selectGoalEmoji(this,'💻')" class="emoji-btn">💻</span>
+      <span onclick="selectGoalEmoji(this,'👶')" class="emoji-btn">👶</span>
+      <span onclick="selectGoalEmoji(this,'💍')" class="emoji-btn">💍</span>
+      <span onclick="selectGoalEmoji(this,'🎓')" class="emoji-btn">🎓</span>
+      <span onclick="selectGoalEmoji(this,'🏋️')" class="emoji-btn">🏋️</span>
+      <span onclick="selectGoalEmoji(this,'🌟')" class="emoji-btn">🌟</span>
+    </div>
+    <div class="field-label">Целевая сумма (<span id="goal-cur">$</span>)</div>
+    <input class="field-inp" id="goal-target" type="number" placeholder="Например: 5000" inputmode="decimal"/>
+    <div class="field-label">Уже накоплено (<span id="goal-cur2">$</span>)</div>
+    <input class="field-inp" id="goal-saved" type="number" placeholder="0" inputmode="decimal"/>
+    <div class="field-label">Дата цели (необязательно)</div>
+    <input class="field-inp" id="goal-date" type="date"/>
+    <button class="save-btn" onclick="saveGoal()" style="margin-bottom:10px">Сохранить цель</button>
+    <button id="delete-goal-btn" onclick="deleteGoal()" style="display:none;width:100%;background:transparent;border:1.5px solid rgba(244,96,96,.3);border-radius:14px;padding:13px;font-family:'Sora',sans-serif;font-size:.86rem;font-weight:600;color:var(--red);cursor:pointer">Удалить цель</button>
   </div>
 </div>
 
@@ -618,6 +675,7 @@ async function enterApp(user){
   updateUI();
   loadTransactions();
   loadBudgets();
+  loadGoals();
   loadAIHint();
 }
 
@@ -748,8 +806,9 @@ window.showTab=t=>{
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
   document.getElementById('nav-'+t).classList.add('active');
-  document.getElementById('add-fab').style.display=(t==='ai'||t==='budget')?'none':'flex';
+  document.getElementById('add-fab').style.display=(t==='ai'||t==='budget'||t==='goals')?'none':'flex';
   if(t==='stats')renderStats();
+  if(t==='goals')renderGoals();
 };
 
 // UI UPDATE
@@ -775,7 +834,7 @@ function loadTransactions(){
         const db2=b.createdAt?.toDate?.()??new Date(0);
         return db2-da;
       });
-    renderTx();updateBalance();renderStats();renderBudgets();loadAIHint();
+    renderTx();updateBalance();renderStats();renderBudgets();renderGoals();loadAIHint();
   },err=>console.error(err));
 }
 
@@ -1129,6 +1188,157 @@ if(window.Telegram?.WebApp?.initData){
   const tgBtn=document.getElementById('tg-login-btn');
   if(tgBtn) tgBtn.style.display='flex';
 }
+
+// GOALS
+let goals=[];
+let editGoalId=null;
+let selectedGoalEmoji='✈️';
+
+function loadGoals(){
+  if(!currentUser)return;
+  const q=query(collection(db,'goals'),where('uid','==',currentUser.uid));
+  onSnapshot(q,snap=>{
+    goals=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderGoals();
+  });
+}
+
+function renderGoals(){
+  const list=document.getElementById('goals-list');
+  if(!goals.length){
+    list.innerHTML='<div class="tx-empty"><div class="ico">⭐</div>Нет целей.<br>Нажми "+ Добавить" чтобы создать.</div>';
+    return;
+  }
+
+  list.innerHTML=goals.map(g=>{
+    const pct=Math.min((g.saved/g.target)*100,100);
+    const remaining=g.target-g.saved;
+    const done=g.saved>=g.target;
+
+    // Calculate months to goal
+    let aiTip='';
+    if(!done&&remaining>0){
+      const now=new Date();
+      const monthExp=transactions.filter(t=>{
+        const d=t.createdAt?.toDate?.()??new Date();
+        return t.type==='expense'&&d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+      }).reduce((s,t)=>s+Number(t.amount),0);
+      const monthInc=transactions.filter(t=>{
+        const d=t.createdAt?.toDate?.()??new Date();
+        return t.type==='income'&&d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+      }).reduce((s,t)=>s+Number(t.amount),0);
+      const monthlySavings=monthInc-monthExp;
+      if(monthlySavings>0){
+        const months=Math.ceil(remaining/monthlySavings);
+        aiTip=`<div class="goal-ai">💡 При текущем темпе накоплений — достигнешь цели через <strong>${months} мес.</strong> Откладывай ${userCurrency}${Math.ceil(remaining/Math.max(months,1))} в месяц.</div>`;
+      } else {
+        aiTip=`<div class="goal-ai">💡 Осталось накопить ${userCurrency}${remaining.toFixed(0)}. Попробуй сократить расходы чтобы быстрее достичь цели.</div>`;
+      }
+    }
+
+    let deadlineStr='';
+    if(g.deadline){
+      const dl=new Date(g.deadline);
+      const daysLeft=Math.ceil((dl-new Date())/(1000*60*60*24));
+      deadlineStr=daysLeft>0?`📅 ${daysLeft} дней`:'⚠️ Срок истёк';
+    }
+
+    return`<div class="goal-item" onclick="openEditGoal('${g.id}')">
+      <div class="goal-header">
+        <div class="goal-emoji">${g.emoji||'⭐'}</div>
+        <div class="goal-info">
+          <div class="goal-name">${g.name}</div>
+          <div class="goal-amounts">${userCurrency}${Number(g.saved).toFixed(0)} из ${userCurrency}${Number(g.target).toFixed(0)} ${deadlineStr}</div>
+        </div>
+        ${done?'<span style="color:var(--green);font-size:1.4rem">✅</span>':''}
+      </div>
+      <div class="goal-bar-wrap">
+        <div class="goal-bar" style="width:${pct}%;${done?'background:var(--green)':''}"></div>
+      </div>
+      <div class="goal-footer">
+        <span style="color:${done?'var(--green)':'var(--muted)'}">
+          ${done?'🎉 Цель достигнута!':`Осталось ${userCurrency}${remaining.toFixed(0)}`}
+        </span>
+        <span style="color:var(--amber);font-weight:600">${Math.round(pct)}%</span>
+      </div>
+      ${aiTip}
+    </div>`;
+  }).join('');
+}
+
+window.selectGoalEmoji=(el,emoji)=>{
+  document.querySelectorAll('.emoji-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  selectedGoalEmoji=emoji;
+};
+
+window.openAddGoalModal=()=>{
+  editGoalId=null;
+  selectedGoalEmoji='✈️';
+  document.getElementById('goal-modal-title').textContent='Новая цель';
+  document.getElementById('goal-name').value='';
+  document.getElementById('goal-target').value='';
+  document.getElementById('goal-saved').value='';
+  document.getElementById('goal-date').value='';
+  document.getElementById('goal-cur').textContent=userCurrency;
+  document.getElementById('goal-cur2').textContent=userCurrency;
+  document.getElementById('delete-goal-btn').style.display='none';
+  document.querySelectorAll('.emoji-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+  document.getElementById('modal-goal').classList.add('show');
+};
+
+window.openEditGoal=(id)=>{
+  const g=goals.find(x=>x.id===id);
+  if(!g)return;
+  editGoalId=id;
+  selectedGoalEmoji=g.emoji||'⭐';
+  document.getElementById('goal-modal-title').textContent='Редактировать цель';
+  document.getElementById('goal-name').value=g.name||'';
+  document.getElementById('goal-target').value=g.target||'';
+  document.getElementById('goal-saved').value=g.saved||'';
+  document.getElementById('goal-date').value=g.deadline||'';
+  document.getElementById('goal-cur').textContent=userCurrency;
+  document.getElementById('goal-cur2').textContent=userCurrency;
+  document.getElementById('delete-goal-btn').style.display='block';
+  document.querySelectorAll('.emoji-btn').forEach(b=>{
+    b.classList.toggle('active',b.textContent.trim()===selectedGoalEmoji);
+  });
+  document.getElementById('modal-goal').classList.add('show');
+};
+
+window.saveGoal=async()=>{
+  const name=document.getElementById('goal-name').value.trim();
+  const target=parseFloat(document.getElementById('goal-target').value);
+  const saved=parseFloat(document.getElementById('goal-saved').value)||0;
+  const deadline=document.getElementById('goal-date').value;
+  if(!name){showToast('Введи название цели');return}
+  if(!target||target<=0){showToast('Введи целевую сумму');return}
+  try{
+    if(editGoalId){
+      await updateDoc(doc(db,'goals',editGoalId),{name,emoji:selectedGoalEmoji,target,saved,deadline});
+      showToast('✓ Цель обновлена');
+    } else {
+      await addDoc(collection(db,'goals'),{
+        uid:currentUser.uid,name,emoji:selectedGoalEmoji,
+        target,saved,deadline,createdAt:serverTimestamp()
+      });
+      showToast('✓ Цель создана');
+    }
+    document.getElementById('modal-goal').classList.remove('show');
+  }catch(e){showToast('Ошибка сохранения');}
+};
+
+window.deleteGoal=async()=>{
+  if(!confirm('Удалить эту цель?'))return;
+  try{
+    const {deleteDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await deleteDoc(doc(db,'goals',editGoalId));
+    document.getElementById('modal-goal').classList.remove('show');
+    showToast('✓ Цель удалена');
+  }catch(e){showToast('Ошибка удаления');}
+};
+
+document.getElementById('modal-goal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('show');});
 
 // BUDGET
 let budgets=[];
