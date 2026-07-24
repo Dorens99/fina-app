@@ -241,6 +241,10 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
           <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z"/></svg>
           Войти через Google
         </button>
+        <button class="auth-google" id="tg-login-btn" onclick="doTelegramAuth()" style="margin-top:8px;background:rgba(39,174,234,0.15);border-color:rgba(39,174,234,0.3);display:none">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#29b6f6"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.03 9.566c-.144.645-.534.8-1.084.498l-3-2.21-1.447 1.393c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L6.54 14.6l-2.95-.924c-.64-.203-.654-.64.136-.948l11.532-4.448c.535-.194 1.002.13.304.968z"/></svg>
+          Войти через Telegram
+        </button>
       </div>
 
       <!-- REGISTER -->
@@ -573,6 +577,54 @@ window.doGoogle=async()=>{
 
 
 
+// Telegram Auth
+window.doTelegramAuth=async()=>{
+  if(window.Telegram?.WebApp?.initDataUnsafe?.user){
+    const tgUser=window.Telegram.WebApp.initDataUnsafe.user;
+    // Auto login via Telegram user data
+    await loginWithTelegram(tgUser);
+    return;
+  }
+  showErr('Открой приложение через Telegram для этого способа входа');
+};
+
+async function loginWithTelegram(tgUser){
+  try{
+    // Create/login Firebase user with Telegram ID as email
+    const email=`tg_${tgUser.id}@fina.app`;
+    const password=`tg_${tgUser.id}_${tgUser.id}`;
+    const name=`${tgUser.first_name||''} ${tgUser.last_name||''}`.trim()||tgUser.username||'Пользователь';
+    
+    try{
+      // Try login first
+      await signInWithEmailAndPassword(auth,email,password);
+    }catch(e){
+      // If not exists - register
+      const cred=await createUserWithEmailAndPassword(auth,email,password);
+      await updateProfile(cred.user,{displayName:name});
+      await setDoc(doc(db,'users',cred.user.uid),{
+        name,
+        email,
+        currency:'$',
+        telegramId:tgUser.id,
+        telegramUsername:tgUser.username||'',
+        createdAt:serverTimestamp()
+      });
+    }
+  }catch(e){
+    showErr('Ошибка входа через Telegram');
+    console.error(e);
+  }
+}
+
+// Auto-login if opened from Telegram
+if(window.Telegram?.WebApp?.initDataUnsafe?.user){
+  document.addEventListener('DOMContentLoaded',()=>{
+    const tgUser=window.Telegram.WebApp.initDataUnsafe.user;
+    if(tgUser?.id) loginWithTelegram(tgUser);
+  });
+}
+
 window.doReset=async()=>{
   const email=document.getElementById('login-email').value.trim();
   if(!email){showErr('Введи email для сброса пароля');return}
@@ -892,6 +944,12 @@ window.savePassword=async()=>{
     errEl.className='auth-err show';
   }
 };
+
+// Show Telegram button if inside Telegram
+if(window.Telegram?.WebApp?.initData){
+  const tgBtn=document.getElementById('tg-login-btn');
+  if(tgBtn) tgBtn.style.display='flex';
+}
 
 // TOAST
 function showToast(msg){
