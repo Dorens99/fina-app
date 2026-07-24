@@ -49,7 +49,7 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
 .auth-google:hover{border-color:rgba(255,255,255,.25);color:white}
 .auth-err{background:rgba(244,96,96,.12);border:1px solid rgba(244,96,96,.3);border-radius:10px;padding:10px 14px;font-size:.8rem;color:var(--red);display:none;margin-bottom:8px}
 .auth-err.show{display:block}
-.forgot-link{text-align:right;margin:-2px 0 6px}<br>.forgot-link span{font-size:.78rem;color:var(--amber2);cursor:pointer;font-weight:500}
+.forgot-link{text-align:right;margin:-2px 0 8px}.forgot-link span{font-size:.82rem;color:var(--amber2);cursor:pointer;font-weight:600;text-decoration:underline;text-underline-offset:3px}
 
 /* APP */
 .app-inner{display:flex;flex-direction:column;height:100%;overflow:hidden}
@@ -223,7 +223,7 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
         <div class="auth-form">
           <input class="auth-inp" id="login-email" type="email" placeholder="Email" autocomplete="email" autocapitalize="off"/>
           <input class="auth-inp" id="login-pass" type="password" placeholder="Пароль" autocomplete="current-password"/>
-          <div class="forgot-link"><span onclick="doReset()">Забыл пароль?</span></div>
+          <div class="forgot-link"><span onclick="doReset()">Восстановить пароль</span></div>
           <button class="auth-btn" onclick="doLogin()">Войти</button>
         </div>
         <div class="auth-divider"><div class="auth-divider-line"></div><div class="auth-divider-text">или</div><div class="auth-divider-line"></div></div>
@@ -365,6 +365,11 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
               <div><div class="settings-title">Валюта</div><div class="settings-sub" id="cur-setting">Доллар — $</div></div>
               <div class="settings-arrow">›</div>
             </div>
+            <div class="settings-item" onclick="openPasswordModal()">
+              <div class="settings-ico">🔑</div>
+              <div><div class="settings-title">Пароль</div><div class="settings-sub" id="password-sub">Установить или сменить пароль</div></div>
+              <div class="settings-arrow">›</div>
+            </div>
             <div class="settings-item">
               <div class="settings-ico">⭐</div>
               <div><div class="settings-title">Premium</div><div class="settings-sub">$2.99/мес · Скоро</div></div>
@@ -413,6 +418,25 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
   </div>
 </div>
 
+<!-- PASSWORD MODAL -->
+<div class="modal-overlay" id="modal-password">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="password-modal-title">Установить пароль</div>
+    <div class="auth-err" id="pass-err"></div>
+    <div id="pass-form-current" style="display:none">
+      <div class="field-label">Текущий пароль</div>
+      <input class="field-inp" id="pass-current" type="password" placeholder="Введи текущий пароль" autocomplete="current-password"/>
+    </div>
+    <div class="field-label">Новый пароль</div>
+    <input class="field-inp" id="pass-new" type="password" placeholder="Минимум 6 символов" autocomplete="new-password"/>
+    <div class="field-label">Повтори пароль</div>
+    <input class="field-inp" id="pass-confirm" type="password" placeholder="Повтори новый пароль" autocomplete="new-password"/>
+    <button class="save-btn" onclick="savePassword()">Сохранить пароль</button>
+    <button onclick="document.getElementById('modal-password').classList.remove('show')" style="width:100%;background:transparent;border:none;padding:14px;font-family:'Sora',sans-serif;font-size:.86rem;color:var(--muted);cursor:pointer;margin-top:8px">Отмена</button>
+  </div>
+</div>
+
 <!-- CURRENCY MODAL -->
 <div class="modal-overlay" id="modal-currency">
   <div class="modal">
@@ -431,7 +455,7 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
 <script src="/.netlify/functions/config"></script>
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signInWithPopup,GoogleAuthProvider,onAuthStateChanged,signOut,updateProfile,sendPasswordResetEmail}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signInWithPopup,GoogleAuthProvider,onAuthStateChanged,signOut,updateProfile,sendPasswordResetEmail,updatePassword,EmailAuthProvider,reauthenticateWithCredential,linkWithCredential}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import{getFirestore,collection,addDoc,query,where,onSnapshot,doc,setDoc,getDoc,updateDoc,serverTimestamp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const fbConfig={
@@ -615,6 +639,7 @@ window.openAddModal=()=>{
 
 document.getElementById('modal-add').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('show');});
 document.getElementById('modal-currency').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('show');});
+document.getElementById('modal-password').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('show');});
 
 window.setType=t=>{
   txType=t;
@@ -780,6 +805,51 @@ window.setCurrency=async(sym,label)=>{
   ['cur-badge','bal-sym'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=sym;});
   document.getElementById('modal-currency').classList.remove('show');
   updateBalance();renderStats();showToast('Валюта: '+sym);
+};
+
+// PASSWORD
+window.openPasswordModal=()=>{
+  const hasPassword=currentUser?.providerData?.some(p=>p.providerId==='password');
+  document.getElementById('password-modal-title').textContent=hasPassword?'Сменить пароль':'Установить пароль';
+  document.getElementById('pass-form-current').style.display=hasPassword?'block':'none';
+  document.getElementById('pass-err').className='auth-err';
+  document.getElementById('pass-new').value='';
+  document.getElementById('pass-confirm').value='';
+  document.getElementById('pass-current').value='';
+  document.getElementById('modal-password').classList.add('show');
+};
+
+window.savePassword=async()=>{
+  const newPass=document.getElementById('pass-new').value;
+  const confirm=document.getElementById('pass-confirm').value;
+  const errEl=document.getElementById('pass-err');
+  
+  if(newPass.length<6){errEl.textContent='Пароль минимум 6 символов';errEl.className='auth-err show';return;}
+  if(newPass!==confirm){errEl.textContent='Пароли не совпадают';errEl.className='auth-err show';return;}
+  
+  const hasPassword=currentUser?.providerData?.some(p=>p.providerId==='password');
+  
+  try{
+    if(hasPassword){
+      // Reauth then update
+      const current=document.getElementById('pass-current').value;
+      if(!current){errEl.textContent='Введи текущий пароль';errEl.className='auth-err show';return;}
+      const cred=EmailAuthProvider.credential(currentUser.email,current);
+      await reauthenticateWithCredential(currentUser,cred);
+      await updatePassword(currentUser,newPass);
+    } else {
+      // Link email/password to Google account
+      const cred=EmailAuthProvider.credential(currentUser.email,newPass);
+      await linkWithCredential(currentUser,cred);
+    }
+    document.getElementById('modal-password').classList.remove('show');
+    document.getElementById('password-sub').textContent='Пароль установлен ✓';
+    showToast('✓ Пароль сохранён!');
+  }catch(e){
+    const msgs={'auth/wrong-password':'Неверный текущий пароль','auth/weak-password':'Пароль слишком простой','auth/requires-recent-login':'Выйди и войди снова, затем попробуй'};
+    errEl.textContent=msgs[e.code]||'Ошибка. Попробуй снова.';
+    errEl.className='auth-err show';
+  }
 };
 
 // TOAST
