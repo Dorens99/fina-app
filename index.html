@@ -204,6 +204,8 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
 
 /* CURRENCY MODAL */
 .cur-btn{width:100%;background:white;border:1px solid var(--border);border-radius:14px;padding:14px 16px;font-family:'Sora',sans-serif;font-size:.88rem;font-weight:500;cursor:pointer;text-align:left;transition:all .2s;display:block;color:var(--dark);margin-bottom:8px}
+.cur-setup-btn{width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 18px;font-family:'Sora',sans-serif;font-size:.9rem;font-weight:500;cursor:pointer;text-align:left;transition:all .2s;color:var(--bg)}
+.cur-setup-btn:hover{background:rgba(245,166,35,.15);border-color:var(--amber2);color:var(--amber2)}
 .cur-btn:hover{border-color:var(--amber2);background:var(--pale)}
 
 /* UTILS */
@@ -213,6 +215,26 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
 </style>
 </head>
 <body>
+
+<!-- CURRENCY SETUP SCREEN -->
+<div class="screen" id="screen-setup">
+  <div class="auth-wrap">
+    <div class="auth-box">
+      <div class="auth-logo"><span class="f">F</span><span class="r">ina</span></div>
+      <div class="auth-sub" style="margin-bottom:8px">Добро пожаловать! 👋</div>
+      <div style="color:#888;font-size:.82rem;margin-bottom:28px">Выбери свою валюту чтобы начать</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="cur-setup-btn" onclick="setupCurrency('$','Доллар — $')">🇺🇸 Доллар — $</button>
+        <button class="cur-setup-btn" onclick="setupCurrency('€','Евро — €')">🇪🇺 Евро — €</button>
+        <button class="cur-setup-btn" onclick="setupCurrency('zł','Злотый — zł')">🇵🇱 Злотый — zł</button>
+        <button class="cur-setup-btn" onclick="setupCurrency('₽','Рубль — ₽')">🇷🇺 Рубль — ₽</button>
+        <button class="cur-setup-btn" onclick="setupCurrency('₴','Гривна — ₴')">🇺🇦 Гривна — ₴</button>
+        <button class="cur-setup-btn" onclick="setupCurrency('₸','Тенге — ₸')">🇰🇿 Тенге — ₸</button>
+        <button class="cur-setup-btn" onclick="setupCurrency('Br','Беларусь — Br')">🇧🇾 Беларусь — Br</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- AUTH SCREEN -->
 <div class="screen active" id="screen-auth">
