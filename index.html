@@ -451,6 +451,34 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
   </div>
 </div>
 
+<!-- EDIT TRANSACTION MODAL -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Редактировать запись</div>
+    <div class="type-toggle">
+      <button class="type-btn exp-active" id="edit-type-exp" onclick="setEditType('expense')">↓ Расход</button>
+      <button class="type-btn" id="edit-type-inc" onclick="setEditType('income')">↑ Доход</button>
+    </div>
+    <div class="amount-display">
+      <div class="amount-lbl">Сумма</div>
+      <div class="amount-val has-val" id="edit-amount-display">0</div>
+    </div>
+    <div class="numpad">
+      <button class="num-btn" onclick="editNumPress('1')">1</button><button class="num-btn" onclick="editNumPress('2')">2</button><button class="num-btn" onclick="editNumPress('3')">3</button>
+      <button class="num-btn" onclick="editNumPress('4')">4</button><button class="num-btn" onclick="editNumPress('5')">5</button><button class="num-btn" onclick="editNumPress('6')">6</button>
+      <button class="num-btn" onclick="editNumPress('7')">7</button><button class="num-btn" onclick="editNumPress('8')">8</button><button class="num-btn" onclick="editNumPress('9')">9</button>
+      <button class="num-btn" onclick="editNumPress('.')">.</button><button class="num-btn" onclick="editNumPress('0')">0</button><button class="num-btn num-del" onclick="editNumDel()">⌫</button>
+    </div>
+    <div class="field-label">Категория</div>
+    <div class="cat-grid" id="edit-cat-grid"></div>
+    <div class="field-label">Комментарий</div>
+    <input class="field-inp" id="edit-comment" placeholder="Необязательно"/>
+    <button class="save-btn" onclick="saveEdit()" style="margin-bottom:10px">Сохранить изменения</button>
+    <button onclick="deleteTx()" style="width:100%;background:transparent;border:1.5px solid rgba(244,96,96,.3);border-radius:14px;padding:13px;font-family:'Sora',sans-serif;font-size:.86rem;font-weight:600;color:var(--red);cursor:pointer">Удалить запись</button>
+  </div>
+</div>
+
 <!-- CURRENCY MODAL -->
 <div class="modal-overlay" id="modal-currency">
   <div class="modal">
@@ -692,7 +720,7 @@ function renderTx(){
     const isExp=tx.type==='expense';
     const d=tx.createdAt?.toDate?.()??new Date();
     const ds=d.toLocaleDateString('ru',{day:'numeric',month:'short'});
-    return`<div class="tx-item">
+    return`<div class="tx-item" onclick="openEditModal('${tx.id}')" style="cursor:pointer">
       <div class="tx-icon" style="background:${isExp?'rgba(244,96,96,.1)':'rgba(52,199,134,.1)'}">${tx.category}</div>
       <div style="flex:1;min-width:0">
         <div class="tx-name">${tx.comment||tx.catName||tx.category}</div>
@@ -700,7 +728,7 @@ function renderTx(){
       </div>
       <div style="text-align:right;flex-shrink:0">
         <div class="tx-amount ${isExp?'exp':'inc'}">${isExp?'−':'+'}${userCurrency}${Number(tx.amount).toFixed(2)}</div>
-        <div class="tx-date">${ds}</div>
+        <div class="tx-date">${ds} ✏️</div>
       </div>
     </div>`;
   }).join('');
@@ -899,6 +927,88 @@ window.setCurrency=async(sym,label)=>{
   document.getElementById('modal-currency').classList.remove('show');
   updateBalance();renderStats();showToast('Валюта: '+sym);
 };
+
+// EDIT & DELETE
+let editTxId=null;
+let editAmountStr='0';
+let editTxType='expense';
+let editSelectedCat='🛒';
+
+window.openEditModal=(txId)=>{
+  const tx=transactions.find(t=>t.id===txId);
+  if(!tx)return;
+  editTxId=txId;
+  editAmountStr=String(tx.amount);
+  editTxType=tx.type;
+  editSelectedCat=tx.category;
+
+  document.getElementById('edit-amount-display').textContent=editAmountStr;
+  document.getElementById('edit-comment').value=tx.comment||'';
+  setEditType(tx.type);
+  buildEditCatGrid(tx.category);
+  document.getElementById('modal-edit').classList.add('show');
+};
+
+window.setEditType=t=>{
+  editTxType=t;
+  document.getElementById('edit-type-exp').className='type-btn'+(t==='expense'?' exp-active':'');
+  document.getElementById('edit-type-inc').className='type-btn'+(t==='income'?' inc-active':'');
+  buildEditCatGrid(editSelectedCat);
+};
+
+function buildEditCatGrid(activeCat){
+  const cats=editTxType==='expense'?CATS_EXP:CATS_INC;
+  editSelectedCat=activeCat||cats[0].ico;
+  document.getElementById('edit-cat-grid').innerHTML=cats.map(cat=>
+    `<div class="cat-btn${cat.ico===editSelectedCat?' active':''}" onclick="selectEditCat(this,'${cat.ico}')">
+      <span class="ico">${cat.ico}</span><span class="lbl">${cat.lbl}</span>
+    </div>`).join('');
+}
+
+window.selectEditCat=(el,ico)=>{
+  document.querySelectorAll('#edit-cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');editSelectedCat=ico;
+};
+
+window.editNumPress=d=>{
+  if(d==='.'&&editAmountStr.includes('.'))return;
+  editAmountStr=editAmountStr==='0'&&d!=='.'?d:editAmountStr.length<10?editAmountStr+d:editAmountStr;
+  document.getElementById('edit-amount-display').textContent=editAmountStr;
+};
+
+window.editNumDel=()=>{
+  editAmountStr=editAmountStr.slice(0,-1)||'0';
+  document.getElementById('edit-amount-display').textContent=editAmountStr;
+};
+
+window.saveEdit=async()=>{
+  const amount=parseFloat(editAmountStr);
+  if(!amount||amount<=0){showToast('Введи сумму');return}
+  const cats=editTxType==='expense'?CATS_EXP:CATS_INC;
+  const cat=cats.find(c=>c.ico===editSelectedCat)||cats[0];
+  try{
+    await updateDoc(doc(db,'transactions',editTxId),{
+      type:editTxType,amount,
+      category:editSelectedCat,catName:cat.lbl,
+      comment:document.getElementById('edit-comment').value.trim()
+    });
+    document.getElementById('modal-edit').classList.remove('show');
+    showToast('✓ Изменено');
+  }catch(e){showToast('Ошибка сохранения');}
+};
+
+window.deleteTx=async()=>{
+  if(!confirm('Удалить эту запись?'))return;
+  try{
+    const {deleteDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await deleteDoc(doc(db,'transactions',editTxId));
+    document.getElementById('modal-edit').classList.remove('show');
+    showToast('✓ Удалено');
+  }catch(e){showToast('Ошибка удаления');}
+};
+
+// Close edit modal on overlay click
+document.getElementById('modal-edit').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('show');});
 
 // PASSWORD
 window.openPasswordModal=()=>{
