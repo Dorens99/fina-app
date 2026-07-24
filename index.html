@@ -12,7 +12,7 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 :root{
   --bg:#faf8f4;--dark:#1a1814;--dark2:#252118;
   --amber:#e07b00;--amber2:#f5a623;--pale:#fff3e0;
@@ -176,7 +176,7 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
 .amount-val.has-val{color:var(--amber)}
 
 .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px}
-.num-btn{background:white;border:1.5px solid var(--border);border-radius:13px;padding:16px;font-family:'DM Serif Display',serif;font-size:1.2rem;cursor:pointer;transition:all .15s;color:var(--dark)}
+.num-btn{background:white;border:1.5px solid var(--border);border-radius:13px;padding:16px;font-family:'DM Serif Display',serif;font-size:1.2rem;cursor:pointer;transition:all .15s;color:var(--dark);touch-action:manipulation}
 .num-btn:active{background:var(--pale);border-color:var(--amber2)}
 .num-del{color:var(--red);font-family:'Sora',sans-serif;font-size:1rem}
 
@@ -539,7 +539,7 @@ const db=getFirestore(fbApp);
 const provider=new GoogleAuthProvider();
 
 // STATE
-let currentUser=null,userCurrency='$',transactions=[],txType='expense',amountStr='0',selectedCat='🛒',currentPeriod='month',chatHistory=[];
+let currentUser=null,userCurrency=sessionStorage.getItem('fina_currency')||'$',transactions=[],txType='expense',amountStr='0',selectedCat='🛒',currentPeriod='month',chatHistory=[];
 
 const CATS_EXP=[{ico:'🛒',lbl:'Еда'},{ico:'🏠',lbl:'Жильё'},{ico:'🚗',lbl:'Транспорт'},{ico:'☕',lbl:'Кафе'},{ico:'💊',lbl:'Здоровье'},{ico:'🎮',lbl:'Развлечения'},{ico:'👕',lbl:'Одежда'},{ico:'📦',lbl:'Другое'}];
 const CATS_INC=[{ico:'💼',lbl:'Зарплата'},{ico:'🎁',lbl:'Подарок'},{ico:'📈',lbl:'Инвестиции'},{ico:'🏦',lbl:'Перевод'},{ico:'💡',lbl:'Фриланс'},{ico:'🏠',lbl:'Аренда'},{ico:'📦',lbl:'Продажа'},{ico:'✨',lbl:'Другое'}];
@@ -547,7 +547,14 @@ const CATS_INC=[{ico:'💼',lbl:'Зарплата'},{ico:'🎁',lbl:'Подар�
 // ENTER APP
 async function enterApp(user){
   currentUser=user;
-  try{const s=await getDoc(doc(db,'users',user.uid));if(s.exists())userCurrency=s.data().currency||'$';}catch(e){}
+  // Load currency first before showing UI
+  try{
+    const s=await getDoc(doc(db,'users',user.uid));
+    if(s.exists()){
+      userCurrency=s.data().currency||'$';
+    }
+  }catch(e){}
+  // Now update UI with correct currency
   updateUI();
   showScreen('app');
   loadTransactions();
@@ -921,11 +928,15 @@ function renderAIMsg(el, text){
 // CURRENCY
 window.setCurrency=async(sym,label)=>{
   userCurrency=sym;
+  sessionStorage.setItem('fina_currency',sym);
   if(currentUser)await updateDoc(doc(db,'users',currentUser.uid),{currency:sym}).catch(()=>{});
   document.getElementById('cur-setting').textContent=label;
   ['cur-badge','bal-sym'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=sym;});
   document.getElementById('modal-currency').classList.remove('show');
-  updateBalance();renderStats();showToast('Валюта: '+sym);
+  updateBalance();
+  renderTx();
+  renderStats();
+  showToast('Валюта: '+sym);
 };
 
 // EDIT & DELETE
