@@ -118,6 +118,15 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
 .goal-footer{display:flex;justify-content:space-between;font-size:.76rem}
 .goal-ai{background:linear-gradient(135deg,rgba(224,123,0,.06),rgba(245,166,35,.03));border:1px solid rgba(224,123,0,.15);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:.76rem;color:var(--amber);line-height:1.5}
 .emoji-btn{font-size:1.4rem;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:white;border:1.5px solid var(--border);transition:all .2s}
+.sub-item{background:white;border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s}
+.sub-item:hover{border-color:var(--amber2)}
+.sub-emoji{font-size:1.4rem;width:42px;height:42px;background:var(--pale);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sub-info{flex:1}
+.sub-name{font-size:.88rem;font-weight:600}
+.sub-meta{font-size:.72rem;color:var(--muted);margin-top:2px}
+.sub-amount{font-size:.92rem;font-weight:700;color:var(--red);white-space:nowrap}
+.auto-found{background:linear-gradient(135deg,rgba(52,199,134,.08),rgba(52,199,134,.03));border:1px solid rgba(52,199,134,.2);border-radius:14px;padding:14px;margin-bottom:8px}
+.auto-found-title{font-size:.72rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
 .emoji-btn.active{border-color:var(--amber);background:var(--pale)}
 .tx-empty .ico{font-size:2.5rem;margin-bottom:10px}
 
@@ -398,6 +407,25 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
         </div>
       </div>
 
+      <!-- SUBSCRIPTIONS TAB -->
+      <div class="tab-pane" id="tab-subs">
+        <div style="padding:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-family:'DM Serif Display',serif;font-size:1.05rem">Подписки</div>
+            <button onclick="openAddSubModal()" style="background:var(--amber2);color:var(--dark);border:none;border-radius:10px;padding:8px 14px;font-family:'Sora',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer">+ Добавить</button>
+          </div>
+          <div style="font-size:.78rem;color:var(--muted);margin-bottom:16px">Регулярные платежи которые списываются каждый месяц</div>
+          <div id="subs-summary" style="display:none;background:var(--dark);border-radius:16px;padding:16px;margin-bottom:16px;text-align:center">
+            <div style="font-size:.72rem;color:#666;margin-bottom:4px">Итого в месяц</div>
+            <div style="font-family:'DM Serif Display',serif;font-size:1.8rem;color:var(--amber2)" id="subs-total">0</div>
+          </div>
+          <div id="subs-auto" style="margin-bottom:16px"></div>
+          <div id="subs-list">
+            <div class="tx-empty"><div class="ico">🔄</div>Нет подписок.<br>Нажми "+ Добавить" чтобы добавить.</div>
+          </div>
+        </div>
+      </div>
+
       <!-- GOALS TAB -->
       <div class="tab-pane" id="tab-goals">
         <div style="padding:16px">
@@ -451,6 +479,11 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
             <div class="settings-item" onclick="openPasswordModal()">
               <div class="settings-ico">🔑</div>
               <div><div class="settings-title">Пароль</div><div class="settings-sub" id="password-sub">Установить или сменить пароль</div></div>
+              <div class="settings-arrow">›</div>
+            </div>
+            <div class="settings-item" onclick="showTab('subs')">
+              <div class="settings-ico">🔄</div>
+              <div><div class="settings-title">Подписки</div><div class="settings-sub">Регулярные платежи</div></div>
               <div class="settings-arrow">›</div>
             </div>
             <div class="settings-item">
@@ -518,6 +551,45 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
     <input class="field-inp" id="pass-confirm" type="password" placeholder="Повтори новый пароль" autocomplete="new-password"/>
     <button class="save-btn" onclick="savePassword()">Сохранить пароль</button>
     <button onclick="document.getElementById('modal-password').classList.remove('show')" style="width:100%;background:transparent;border:none;padding:14px;font-family:'Sora',sans-serif;font-size:.86rem;color:var(--muted);cursor:pointer;margin-top:8px">Отмена</button>
+  </div>
+</div>
+
+<!-- ADD SUBSCRIPTION MODAL -->
+<div class="modal-overlay" id="modal-sub">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="sub-modal-title">Новая подписка</div>
+    <div class="field-label">Название</div>
+    <input class="field-inp" id="sub-name" placeholder="Netflix, Spotify, аренда..."/>
+    <div class="field-label">Эмодзи</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <span onclick="selectSubEmoji(this,'📺')" class="emoji-btn active">📺</span>
+      <span onclick="selectSubEmoji(this,'🎵')" class="emoji-btn">🎵</span>
+      <span onclick="selectSubEmoji(this,'🏠')" class="emoji-btn">🏠</span>
+      <span onclick="selectSubEmoji(this,'☁️')" class="emoji-btn">☁️</span>
+      <span onclick="selectSubEmoji(this,'📱')" class="emoji-btn">📱</span>
+      <span onclick="selectSubEmoji(this,'🎮')" class="emoji-btn">🎮</span>
+      <span onclick="selectSubEmoji(this,'💪')" class="emoji-btn">💪</span>
+      <span onclick="selectSubEmoji(this,'📰')" class="emoji-btn">📰</span>
+      <span onclick="selectSubEmoji(this,'🔄')" class="emoji-btn">🔄</span>
+      <span onclick="selectSubEmoji(this,'💳')" class="emoji-btn">💳</span>
+    </div>
+    <div class="field-label">Сумма в месяц (<span id="sub-cur">$</span>)</div>
+    <input class="field-inp" id="sub-amount" type="number" placeholder="Например: 15" inputmode="decimal"/>
+    <div class="field-label">Дата списания (число месяца)</div>
+    <input class="field-inp" id="sub-day" type="number" placeholder="Например: 1, 15, 25" min="1" max="31" inputmode="numeric"/>
+    <div class="field-label">Категория</div>
+    <select class="field-inp" id="sub-category" style="cursor:pointer">
+      <option value="Развлечения">🎮 Развлечения</option>
+      <option value="Музыка">🎵 Музыка</option>
+      <option value="Видео">📺 Видео</option>
+      <option value="Здоровье">💪 Здоровье</option>
+      <option value="Жильё">🏠 Жильё</option>
+      <option value="Работа">💼 Работа</option>
+      <option value="Другое">📦 Другое</option>
+    </select>
+    <button class="save-btn" onclick="saveSub()" style="margin-bottom:10px;margin-top:4px">Сохранить</button>
+    <button id="delete-sub-btn" onclick="deleteSub()" style="display:none;width:100%;background:transparent;border:1.5px solid rgba(244,96,96,.3);border-radius:14px;padding:13px;font-family:'Sora',sans-serif;font-size:.86rem;font-weight:600;color:var(--red);cursor:pointer">Удалить подписку</button>
   </div>
 </div>
 
@@ -676,6 +748,7 @@ async function enterApp(user){
   loadTransactions();
   loadBudgets();
   loadGoals();
+  loadSubs();
   loadAIHint();
 }
 
@@ -806,7 +879,7 @@ window.showTab=t=>{
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
   document.getElementById('nav-'+t).classList.add('active');
-  document.getElementById('add-fab').style.display=(t==='ai'||t==='budget'||t==='goals')?'none':'flex';
+  document.getElementById('add-fab').style.display=(t==='ai'||t==='budget'||t==='goals'||t==='subs')?'none':'flex';
   if(t==='stats')renderStats();
   if(t==='goals')renderGoals();
 };
@@ -1188,6 +1261,155 @@ if(window.Telegram?.WebApp?.initData){
   const tgBtn=document.getElementById('tg-login-btn');
   if(tgBtn) tgBtn.style.display='flex';
 }
+
+// SUBSCRIPTIONS
+let subs=[];
+let editSubId=null;
+let selectedSubEmoji='📺';
+
+function loadSubs(){
+  if(!currentUser)return;
+  const q=query(collection(db,'subscriptions'),where('uid','==',currentUser.uid));
+  onSnapshot(q,snap=>{
+    subs=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderSubs();
+    detectAutoSubs();
+  });
+}
+
+function detectAutoSubs(){
+  // Find recurring transactions (same amount appearing multiple times)
+  const autoEl=document.getElementById('subs-auto');
+  if(!autoEl)return;
+  const expTx=transactions.filter(t=>t.type==='expense');
+  const amountCount={};
+  expTx.forEach(t=>{
+    const key=`${t.amount}_${t.catName}`;
+    amountCount[key]=(amountCount[key]||[]);
+    amountCount[key].push(t);
+  });
+  const recurring=Object.values(amountCount).filter(arr=>arr.length>=2);
+  if(!recurring.length){autoEl.innerHTML='';return;}
+  const alreadyTracked=subs.map(s=>Number(s.amount));
+  const newOnes=recurring.filter(arr=>!alreadyTracked.includes(Number(arr[0].amount)));
+  if(!newOnes.length){autoEl.innerHTML='';return;}
+  autoEl.innerHTML=`<div class="auto-found">
+    <div class="auto-found-title">🔍 Обнаружены регулярные платежи</div>
+    ${newOnes.slice(0,3).map(arr=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(52,199,134,.15)">
+        <div>
+          <div style="font-size:.84rem;font-weight:600">${arr[0].catName||arr[0].category} × ${arr.length}</div>
+          <div style="font-size:.7rem;color:var(--muted)">Повторяется ${arr.length} раза</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="font-size:.88rem;font-weight:700;color:var(--red)">${userCurrency}${Number(arr[0].amount).toFixed(0)}</div>
+          <button onclick="quickAddSub('${arr[0].catName||arr[0].category}',${arr[0].amount})" style="background:var(--green);color:white;border:none;border-radius:8px;padding:5px 10px;font-size:.72rem;font-weight:600;cursor:pointer">+ Добавить</button>
+        </div>
+      </div>`).join('')}
+  </div>`;
+}
+
+window.quickAddSub=async(name,amount)=>{
+  try{
+    await addDoc(collection(db,'subscriptions'),{
+      uid:currentUser.uid,name,emoji:'🔄',
+      amount:Number(amount),day:1,
+      category:'Другое',createdAt:serverTimestamp()
+    });
+    showToast('✓ Подписка добавлена');
+  }catch(e){showToast('Ошибка');}
+};
+
+function renderSubs(){
+  const list=document.getElementById('subs-list');
+  const summary=document.getElementById('subs-summary');
+  const total=document.getElementById('subs-total');
+  if(!subs.length){
+    list.innerHTML='<div class="tx-empty"><div class="ico">🔄</div>Нет подписок.<br>Нажми "+ Добавить" чтобы добавить.</div>';
+    if(summary)summary.style.display='none';
+    return;
+  }
+  const monthTotal=subs.reduce((s,sub)=>s+Number(sub.amount),0);
+  if(summary){summary.style.display='block';}
+  if(total)total.textContent=userCurrency+monthTotal.toFixed(0);
+  list.innerHTML=subs.map(s=>`
+    <div class="sub-item" onclick="openEditSub('${s.id}')">
+      <div class="sub-emoji">${s.emoji||'🔄'}</div>
+      <div class="sub-info">
+        <div class="sub-name">${s.name}</div>
+        <div class="sub-meta">${s.category||'Другое'} · ${s.day?s.day+' числа каждый месяц':'Ежемесячно'}</div>
+      </div>
+      <div class="sub-amount">−${userCurrency}${Number(s.amount).toFixed(0)}</div>
+    </div>`).join('');
+}
+
+window.selectSubEmoji=(el,emoji)=>{
+  document.querySelectorAll('#modal-sub .emoji-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');selectedSubEmoji=emoji;
+};
+
+window.openAddSubModal=()=>{
+  editSubId=null;selectedSubEmoji='📺';
+  document.getElementById('sub-modal-title').textContent='Новая подписка';
+  document.getElementById('sub-name').value='';
+  document.getElementById('sub-amount').value='';
+  document.getElementById('sub-day').value='';
+  document.getElementById('sub-cur').textContent=userCurrency;
+  document.getElementById('delete-sub-btn').style.display='none';
+  document.querySelectorAll('#modal-sub .emoji-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+  document.getElementById('modal-sub').classList.add('show');
+};
+
+window.openEditSub=(id)=>{
+  const s=subs.find(x=>x.id===id);
+  if(!s)return;
+  editSubId=id;selectedSubEmoji=s.emoji||'🔄';
+  document.getElementById('sub-modal-title').textContent='Редактировать подписку';
+  document.getElementById('sub-name').value=s.name||'';
+  document.getElementById('sub-amount').value=s.amount||'';
+  document.getElementById('sub-day').value=s.day||'';
+  document.getElementById('sub-cur').textContent=userCurrency;
+  document.getElementById('sub-category').value=s.category||'Другое';
+  document.getElementById('delete-sub-btn').style.display='block';
+  document.querySelectorAll('#modal-sub .emoji-btn').forEach(b=>{
+    b.classList.toggle('active',b.textContent.trim()===selectedSubEmoji);
+  });
+  document.getElementById('modal-sub').classList.add('show');
+};
+
+window.saveSub=async()=>{
+  const name=document.getElementById('sub-name').value.trim();
+  const amount=parseFloat(document.getElementById('sub-amount').value);
+  const day=parseInt(document.getElementById('sub-day').value)||1;
+  const category=document.getElementById('sub-category').value;
+  if(!name){showToast('Введи название');return}
+  if(!amount||amount<=0){showToast('Введи сумму');return}
+  try{
+    if(editSubId){
+      await updateDoc(doc(db,'subscriptions',editSubId),{name,emoji:selectedSubEmoji,amount,day,category});
+      showToast('✓ Подписка обновлена');
+    } else {
+      await addDoc(collection(db,'subscriptions'),{
+        uid:currentUser.uid,name,emoji:selectedSubEmoji,
+        amount,day,category,createdAt:serverTimestamp()
+      });
+      showToast('✓ Подписка добавлена');
+    }
+    document.getElementById('modal-sub').classList.remove('show');
+  }catch(e){showToast('Ошибка сохранения');}
+};
+
+window.deleteSub=async()=>{
+  if(!confirm('Удалить подписку?'))return;
+  try{
+    const{deleteDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await deleteDoc(doc(db,'subscriptions',editSubId));
+    document.getElementById('modal-sub').classList.remove('show');
+    showToast('✓ Подписка удалена');
+  }catch(e){showToast('Ошибка удаления');}
+};
+
+document.getElementById('modal-sub').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('show');});
 
 // GOALS
 let goals=[];
