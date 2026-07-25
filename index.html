@@ -500,7 +500,7 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
               <div class="settings-ico">⭐</div>
               <div>
                 <div class="settings-title">Premium</div>
-                <div class="settings-sub" id="premium-sub">Загрузка...</div>
+                <div class="settings-sub" id="premium-sub">Premium · от $2.99/мес</div>
               </div>
               <div class="settings-arrow">›</div>
             </div>
@@ -1000,6 +1000,7 @@ window.showTab=t=>{
   document.getElementById('add-fab').style.display=(t==='ai'||t==='budget'||t==='goals'||t==='subs')?'none':'flex';
   if(t==='stats')renderStats();
   if(t==='goals')renderGoals();
+  if(t==='profile')updatePremiumUI();
 };
 
 // UI UPDATE
