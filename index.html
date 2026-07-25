@@ -129,6 +129,7 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
 .member-avatar{width:36px;height:36px;background:var(--amber2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;color:var(--dark);flex-shrink:0}
 .member-name{flex:1;font-size:.86rem;font-weight:600}
 .member-you{font-size:.7rem;color:var(--muted)}
+.premium-badge{display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,var(--amber),var(--amber2));color:var(--dark);font-size:.65rem;font-weight:700;padding:3px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
 .auto-found{background:linear-gradient(135deg,rgba(52,199,134,.08),rgba(52,199,134,.03));border:1px solid rgba(52,199,134,.2);border-radius:14px;padding:14px;margin-bottom:8px}
 .auto-found-title{font-size:.72rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
 .emoji-btn.active{border-color:var(--amber);background:var(--pale)}
@@ -495,9 +496,12 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
               <div><div class="settings-title">Подписки</div><div class="settings-sub">Регулярные платежи</div></div>
               <div class="settings-arrow">›</div>
             </div>
-            <div class="settings-item">
+            <div class="settings-item" onclick="openPremiumModal()" style="cursor:pointer">
               <div class="settings-ico">⭐</div>
-              <div><div class="settings-title">Premium</div><div class="settings-sub">$2.99/мес · Скоро</div></div>
+              <div>
+                <div class="settings-title">Premium</div>
+                <div class="settings-sub" id="premium-sub">Загрузка...</div>
+              </div>
               <div class="settings-arrow">›</div>
             </div>
           </div>
@@ -560,6 +564,71 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
     <input class="field-inp" id="pass-confirm" type="password" placeholder="Повтори новый пароль" autocomplete="new-password"/>
     <button class="save-btn" onclick="savePassword()">Сохранить пароль</button>
     <button onclick="document.getElementById('modal-password').classList.remove('show')" style="width:100%;background:transparent;border:none;padding:14px;font-family:'Sora',sans-serif;font-size:.86rem;color:var(--muted);cursor:pointer;margin-top:8px">Отмена</button>
+  </div>
+</div>
+
+<!-- PREMIUM MODAL -->
+<div class="modal-overlay" id="modal-premium">
+  <div class="modal">
+    <div class="modal-handle"></div>
+
+    <!-- FOUNDING MEMBER view -->
+    <div id="premium-founding" style="display:none;text-align:center;padding:8px 0">
+      <div style="font-size:3rem;margin-bottom:12px">🏆</div>
+      <div style="font-family:'DM Serif Display',serif;font-size:1.4rem;margin-bottom:8px">Founding Member</div>
+      <div style="font-size:.84rem;color:var(--muted);line-height:1.6;margin-bottom:20px">Ты один из первых пользователей Fina. Все Premium функции доступны тебе <strong>бесплатно навсегда</strong> в знак благодарности.</div>
+      <div style="background:var(--pale);border-radius:14px;padding:14px;text-align:left">
+        <div style="font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Твои привилегии</div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:.84rem">
+          <div>✅ Безлимитные транзакции</div>
+          <div>✅ AI-советник без ограничений</div>
+          <div>✅ Семейный аккаунт</div>
+          <div>✅ Все функции навсегда</div>
+          <div>✅ Статус Founding Member</div>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <div style="font-size:.8rem;color:var(--muted);margin-bottom:10px">Хочешь дать другу тот же статус?</div>
+        <div style="display:flex;gap:8px">
+          <input class="field-inp" id="invite-email" placeholder="Email друга" style="margin-bottom:0;flex:1"/>
+          <button onclick="sendInvite()" style="background:var(--amber2);color:var(--dark);border:none;border-radius:13px;padding:13px 16px;font-family:'Sora',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap">Пригласить</button>
+        </div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:6px">Или поделись инвайт-кодом: <strong id="invite-code-display" style="color:var(--amber);cursor:pointer" onclick="copyInviteCode()">загрузка...</strong></div>
+      </div>
+    </div>
+
+    <!-- FREE plan view -->
+    <div id="premium-free" style="display:none">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:2.5rem;margin-bottom:8px">⭐</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:1.3rem;margin-bottom:6px">Fina Premium</div>
+        <div style="font-size:.84rem;color:var(--muted)">Разблокируй все возможности</div>
+      </div>
+      <div style="background:var(--pale);border-radius:14px;padding:14px;margin-bottom:16px">
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:.84rem">
+          <div style="display:flex;justify-content:space-between"><span>✅ Безлимитные транзакции</span><span style="color:var(--muted);font-size:.76rem">vs 50/мес</span></div>
+          <div style="display:flex;justify-content:space-between"><span>✅ AI без ограничений</span><span style="color:var(--muted);font-size:.76rem">vs 3/мес</span></div>
+          <div style="display:flex;justify-content:space-between"><span>✅ Семейный аккаунт</span><span style="color:var(--muted);font-size:.76rem">Premium only</span></div>
+          <div style="display:flex;justify-content:space-between"><span>✅ Трекер подписок</span><span style="color:var(--muted);font-size:.76rem">Premium only</span></div>
+          <div style="display:flex;justify-content:space-between"><span>✅ Безлимитные цели</span><span style="color:var(--muted);font-size:.76rec">vs 1</span></div>
+        </div>
+      </div>
+      <button class="save-btn" style="margin-bottom:10px">$2.99 / месяц · Скоро</button>
+      <div style="text-align:center;margin-top:8px">
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:8px">Есть инвайт-код от друга?</div>
+        <div style="display:flex;gap:8px">
+          <input class="field-inp" id="redeem-code" placeholder="Введи код" style="margin-bottom:0;flex:1;text-transform:uppercase"/>
+          <button onclick="redeemInvite()" style="background:var(--dark);color:var(--amber2);border:none;border-radius:13px;padding:13px 16px;font-family:'Sora',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer">Активировать</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PREMIUM plan view -->
+    <div id="premium-paid" style="display:none;text-align:center;padding:8px 0">
+      <div style="font-size:3rem;margin-bottom:12px">⭐</div>
+      <div style="font-family:'DM Serif Display',serif;font-size:1.4rem;margin-bottom:8px">Premium активен</div>
+      <div style="font-size:.84rem;color:var(--muted);line-height:1.6">Все функции разблокированы. Спасибо что поддерживаешь Fina!</div>
+    </div>
   </div>
 </div>
 
@@ -773,7 +842,7 @@ const db=getFirestore(fbApp);
 const provider=new GoogleAuthProvider();
 
 // STATE
-let currentUser=null,userCurrency='$',transactions=[],txType='expense',amountStr='0',selectedCat='🛒',currentPeriod='month',chatHistory=[];
+let currentUser=null,userPlan='free',userCurrency='$',transactions=[],txType='expense',amountStr='0',selectedCat='🛒',currentPeriod='month',chatHistory=[];
 
 const CATS_EXP=[{ico:'🛒',lbl:'Еда'},{ico:'🏠',lbl:'Жильё'},{ico:'🚗',lbl:'Транспорт'},{ico:'☕',lbl:'Кафе'},{ico:'💊',lbl:'Здоровье'},{ico:'🎮',lbl:'Развлечения'},{ico:'👕',lbl:'Одежда'},{ico:'📦',lbl:'Другое'}];
 const CATS_INC=[{ico:'💼',lbl:'Зарплата'},{ico:'🎁',lbl:'Подарок'},{ico:'📈',lbl:'Инвестиции'},{ico:'🏦',lbl:'Перевод'},{ico:'💡',lbl:'Фриланс'},{ico:'🏠',lbl:'Аренда'},{ico:'📦',lbl:'Продажа'},{ico:'✨',lbl:'Другое'}];
@@ -1314,6 +1383,87 @@ if(window.Telegram?.WebApp?.initData){
   const tgBtn=document.getElementById('tg-login-btn');
   if(tgBtn) tgBtn.style.display='flex';
 }
+
+// PREMIUM & INVITES
+function updatePremiumUI(){
+  const sub=document.getElementById('premium-sub');
+  if(!sub)return;
+  if(userPlan==='founding'){
+    sub.innerHTML='🏆 Founding Member · Навсегда бесплатно';
+    sub.style.color='var(--amber)';
+  } else if(userPlan==='premium'){
+    sub.innerHTML='⭐ Premium активен';
+    sub.style.color='var(--green)';
+  } else {
+    sub.textContent='Разблокировать все функции · $2.99/мес';
+  }
+}
+
+function isPremium(){
+  return userPlan==='founding'||userPlan==='premium'||userPlan==='invited';
+}
+
+window.openPremiumModal=()=>{
+  document.getElementById('premium-founding').style.display='none';
+  document.getElementById('premium-free').style.display='none';
+  document.getElementById('premium-paid').style.display='none';
+
+  if(userPlan==='founding'){
+    document.getElementById('premium-founding').style.display='block';
+    loadInviteCode();
+  } else if(userPlan==='premium'||userPlan==='invited'){
+    document.getElementById('premium-paid').style.display='block';
+  } else {
+    document.getElementById('premium-free').style.display='block';
+  }
+  document.getElementById('modal-premium').classList.add('show');
+};
+
+async function loadInviteCode(){
+  if(!currentUser)return;
+  try{
+    const userDoc=await getDoc(doc(db,'users',currentUser.uid));
+    let inviteCode=userDoc.data()?.inviteCode;
+    if(!inviteCode){
+      inviteCode=Math.random().toString(36).substring(2,8).toUpperCase();
+      await updateDoc(doc(db,'users',currentUser.uid),{inviteCode});
+    }
+    const el=document.getElementById('invite-code-display');
+    if(el)el.textContent=inviteCode;
+  }catch(e){console.log(e);}
+}
+
+window.copyInviteCode=()=>{
+  const code=document.getElementById('invite-code-display')?.textContent;
+  if(code){navigator.clipboard?.writeText(code);showToast('✓ Код скопирован: '+code);}
+};
+
+window.sendInvite=async()=>{
+  const email=document.getElementById('invite-email')?.value.trim();
+  if(!email||!email.includes('@')){showToast('Введи email друга');return}
+  showToast('✓ Приглашение отправлено на '+email);
+  document.getElementById('invite-email').value='';
+};
+
+window.redeemInvite=async()=>{
+  const code=document.getElementById('redeem-code')?.value.trim().toUpperCase();
+  if(!code||code.length<4){showToast('Введи код приглашения');return}
+  try{
+    const{getDocs:gd}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const q=query(collection(db,'users'),where('inviteCode','==',code));
+    const snap=await gd(q);
+    if(snap.empty){showToast('Код не найден. Проверь и попробуй снова.');return}
+    // Valid code - give invited plan
+    await updateDoc(doc(db,'users',currentUser.uid),{plan:'invited',invitedBy:code});
+    userPlan='invited';
+    updatePremiumUI();
+    document.getElementById('premium-free').style.display='none';
+    document.getElementById('premium-paid').style.display='block';
+    showToast('🎉 Premium активирован!');
+  }catch(e){showToast('Ошибка активации. Попробуй снова.');}
+};
+
+document.getElementById('modal-premium').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('show');});
 
 // FAMILY
 let familyId=null;
