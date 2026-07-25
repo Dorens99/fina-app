@@ -608,7 +608,8 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
           <div style="display:flex;justify-content:space-between"><span>✅ Безлимитные цели</span><span style="color:var(--muted);font-size:.76rec">vs 1</span></div>
         </div>
       </div>
-      <button class="save-btn" style="margin-bottom:10px">$2.99 / месяц · Скоро</button>
+      <button class="save-btn" onclick="payWithStars('monthly')" style="margin-bottom:8px">⭐ 150 Stars / месяц</button>
+      <button onclick="payWithStars('yearly')" style="width:100%;background:var(--dark);color:var(--amber2);border:none;border-radius:14px;padding:14px;font-family:'Sora',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;margin-bottom:8px">⭐ 500 Stars / 3 месяца <span style="background:var(--amber2);color:var(--dark);font-size:.7rem;padding:2px 8px;border-radius:10px;margin-left:6px">−30%</span></button>
       <div style="text-align:center;margin-top:8px">
         <div style="font-size:.78rem;color:var(--muted);margin-bottom:8px">Есть инвайт-код от друга?</div>
         <div style="display:flex;gap:8px">
@@ -1111,6 +1112,20 @@ window.selectCat=(el,ico)=>{
 window.saveTx=async()=>{
   const amount=parseFloat(amountStr);
   if(!amount||amount<=0){showToast('Введи сумму');return}
+  // Check free plan limits
+  if(!isPremium()){
+    const now=new Date();
+    const monthTx=transactions.filter(t=>{
+      const d=t.createdAt?.toDate?.()??new Date();
+      return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+    });
+    if(monthTx.length>=50){
+      document.getElementById('modal-add').classList.remove('show');
+      showToast('Лимит 50 транзакций в месяц');
+      setTimeout(()=>openPremiumModal(),500);
+      return;
+    }
+  }
   const btn=document.getElementById('save-btn');
   btn.disabled=true;btn.textContent='Сохраняем...';
   const cats=txType==='expense'?CATS_EXP:CATS_INC;
@@ -1203,6 +1218,12 @@ async function loadAIHint(){
 window.sendChat=async()=>{
   const inp=document.getElementById('chat-inp');
   const msg=inp.value.trim();if(!msg)return;
+  // Check free AI limit
+  if(!isPremium()&&chatHistory.filter(m=>m.role==='user').length>=3){
+    addMsg('ai','Ты использовал 3 бесплатных AI-запроса в этой сессии. Перейди на Premium для безлимитного доступа 👉');
+    setTimeout(()=>openPremiumModal(),1000);
+    return;
+  }
   inp.value='';
   addMsg('user',msg);
   chatHistory.push({role:'user',content:msg});
@@ -1418,6 +1439,48 @@ window.openPremiumModal=async()=>{
     document.getElementById('premium-paid').style.display='block';
   } else {
     document.getElementById('premium-free').style.display='block';
+  }
+};
+
+// TELEGRAM STARS PAYMENT
+window.payWithStars=async(plan)=>{
+  if(!window.Telegram?.WebApp){
+    showToast('Оплата доступна только в Telegram');
+    return;
+  }
+  const prices={
+    monthly:{amount:150,label:'Fina Premium · 1 месяц',months:1},
+    yearly:{amount:500,label:'Fina Premium · 3 месяца',months:3}
+  };
+  const selected=prices[plan];
+  try{
+    // Call our backend to create invoice
+    const res=await fetch('/.netlify/functions/create-invoice',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        uid:currentUser.uid,
+        plan,
+        amount:selected.amount,
+        label:selected.label,
+        months:selected.months
+      })
+    });
+    const data=await res.json();
+    if(data.invoiceLink){
+      window.Telegram.WebApp.openInvoice(data.invoiceLink, status=>{
+        if(status==='paid'){
+          userPlan='premium';
+          updatePremiumUI();
+          document.getElementById('premium-free').style.display='none';
+          document.getElementById('premium-paid').style.display='block';
+          showToast('🎉 Premium активирован!');
+        }
+      });
+    }
+  }catch(e){
+    showToast('Ошибка оплаты. Попробуй снова.');
+    console.log(e);
   }
 };
 
