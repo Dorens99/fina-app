@@ -1398,10 +1398,19 @@ function isPremium(){
   return userPlan==='founding'||userPlan==='premium'||userPlan==='invited';
 }
 
-window.openPremiumModal=()=>{
+window.openPremiumModal=async()=>{
+  document.getElementById('modal-premium').classList.add('show');
   document.getElementById('premium-founding').style.display='none';
   document.getElementById('premium-free').style.display='none';
   document.getElementById('premium-paid').style.display='none';
+
+  // Always reload plan fresh from Firebase
+  try{
+    const snap=await getDoc(doc(db,'users',currentUser.uid));
+    if(snap.exists()) userPlan=snap.data().plan||'free';
+  }catch(e){}
+
+  updatePremiumUI();
 
   if(userPlan==='founding'){
     document.getElementById('premium-founding').style.display='block';
@@ -1410,7 +1419,6 @@ window.openPremiumModal=()=>{
   } else {
     document.getElementById('premium-free').style.display='block';
   }
-  document.getElementById('modal-premium').classList.add('show');
 };
 
 // Invite codes are managed by admin in Firebase console
