@@ -125,6 +125,10 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
 .sub-name{font-size:.88rem;font-weight:600}
 .sub-meta{font-size:.72rem;color:var(--muted);margin-top:2px}
 .sub-amount{font-size:.92rem;font-weight:700;color:var(--red);white-space:nowrap}
+.member-item{display:flex;align-items:center;gap:10px;background:white;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.member-avatar{width:36px;height:36px;background:var(--amber2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;color:var(--dark);flex-shrink:0}
+.member-name{flex:1;font-size:.86rem;font-weight:600}
+.member-you{font-size:.7rem;color:var(--muted)}
 .auto-found{background:linear-gradient(135deg,rgba(52,199,134,.08),rgba(52,199,134,.03));border:1px solid rgba(52,199,134,.2);border-radius:14px;padding:14px;margin-bottom:8px}
 .auto-found-title{font-size:.72rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
 .emoji-btn.active{border-color:var(--amber);background:var(--pale)}
@@ -481,6 +485,11 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
               <div><div class="settings-title">Пароль</div><div class="settings-sub" id="password-sub">Установить или сменить пароль</div></div>
               <div class="settings-arrow">›</div>
             </div>
+            <div class="settings-item" onclick="openFamilyModal()">
+              <div class="settings-ico">👨‍👩‍👧</div>
+              <div><div class="settings-title">Семейный аккаунт</div><div class="settings-sub" id="family-sub">Пригласи близких</div></div>
+              <div class="settings-arrow">›</div>
+            </div>
             <div class="settings-item" onclick="showTab('subs')">
               <div class="settings-ico">🔄</div>
               <div><div class="settings-title">Подписки</div><div class="settings-sub">Регулярные платежи</div></div>
@@ -551,6 +560,45 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
     <input class="field-inp" id="pass-confirm" type="password" placeholder="Повтори новый пароль" autocomplete="new-password"/>
     <button class="save-btn" onclick="savePassword()">Сохранить пароль</button>
     <button onclick="document.getElementById('modal-password').classList.remove('show')" style="width:100%;background:transparent;border:none;padding:14px;font-family:'Sora',sans-serif;font-size:.86rem;color:var(--muted);cursor:pointer;margin-top:8px">Отмена</button>
+  </div>
+</div>
+
+<!-- FAMILY MODAL -->
+<div class="modal-overlay" id="modal-family">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">👨‍👩‍👧 Семейный аккаунт</div>
+
+    <!-- Create family section -->
+    <div id="family-create-section">
+      <div style="background:var(--pale);border-radius:14px;padding:14px;margin-bottom:16px;font-size:.84rem;color:var(--amber);line-height:1.6">
+        Создай семью и пригласи близких. Все участники будут видеть общие расходы и доходы.
+      </div>
+      <button class="save-btn" onclick="createFamily()" id="create-family-btn">Создать семью</button>
+    </div>
+
+    <!-- Join family section -->
+    <div style="margin-top:12px">
+      <div class="field-label">Или войди в существующую семью</div>
+      <div style="display:flex;gap:8px">
+        <input class="field-inp" id="family-code-inp" placeholder="Введи код приглашения" style="margin-bottom:0;flex:1;text-transform:uppercase"/>
+        <button onclick="joinFamily()" style="background:var(--dark);color:var(--amber2);border:none;border-radius:13px;padding:13px 16px;font-family:'Sora',sans-serif;font-size:.84rem;font-weight:600;cursor:pointer;white-space:nowrap">Войти</button>
+      </div>
+    </div>
+
+    <!-- Family info section (shown when in family) -->
+    <div id="family-info-section" style="display:none">
+      <div style="background:var(--pale);border-radius:14px;padding:16px;margin-bottom:14px">
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">Код вашей семьи</div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-family:'DM Serif Display',serif;font-size:1.8rem;letter-spacing:4px;color:var(--amber)" id="family-code-display">------</div>
+          <button onclick="copyFamilyCode()" style="background:var(--amber2);color:var(--dark);border:none;border-radius:10px;padding:8px 14px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif">Копировать</button>
+        </div>
+        <div style="font-size:.74rem;color:var(--muted);margin-top:6px">Поделись кодом с близкими чтобы они могли присоединиться</div>
+      </div>
+      <div id="family-members-list"></div>
+      <button onclick="leaveFamily()" style="width:100%;background:transparent;border:1.5px solid rgba(244,96,96,.3);border-radius:14px;padding:13px;font-family:'Sora',sans-serif;font-size:.84rem;font-weight:600;color:var(--red);cursor:pointer;margin-top:8px">Покинуть семью</button>
+    </div>
   </div>
 </div>
 
@@ -745,7 +793,12 @@ async function enterApp(user){
   }catch(e){}
   // Update UI with correct currency from Firebase
   updateUI();
-  loadTransactions();
+  await loadFamily();
+  if(familyId&&familyData?.members?.length>1){
+    loadFamilyTransactions();
+  } else {
+    loadTransactions();
+  }
   loadBudgets();
   loadGoals();
   loadSubs();
@@ -1261,6 +1314,170 @@ if(window.Telegram?.WebApp?.initData){
   const tgBtn=document.getElementById('tg-login-btn');
   if(tgBtn) tgBtn.style.display='flex';
 }
+
+// FAMILY
+let familyId=null;
+let familyData=null;
+
+async function loadFamily(){
+  if(!currentUser)return;
+  try{
+    const userDoc=await getDoc(doc(db,'users',currentUser.uid));
+    if(userDoc.exists()&&userDoc.data().familyId){
+      familyId=userDoc.data().familyId;
+      const famDoc=await getDoc(doc(db,'families',familyId));
+      if(famDoc.exists()){
+        familyData=famDoc.data();
+        updateFamilyUI();
+        // Subscribe to family updates
+        onSnapshot(doc(db,'families',familyId),snap=>{
+          if(snap.exists()){familyData=snap.data();updateFamilyUI();}
+        });
+      }
+    }
+  }catch(e){console.log('Family load error:',e);}
+}
+
+function updateFamilyUI(){
+  if(!familyData)return;
+  const sub=document.getElementById('family-sub');
+  if(sub){
+    const count=familyData.members?.length||1;
+    sub.textContent=`${count} участник${count>1?(count<5?'а':'ов'):''}`;
+  }
+}
+
+window.openFamilyModal=()=>{
+  document.getElementById('family-code-inp').value='';
+  if(familyId&&familyData){
+    document.getElementById('family-create-section').style.display='none';
+    document.getElementById('family-info-section').style.display='block';
+    document.getElementById('family-code-display').textContent=familyData.code||'------';
+    renderFamilyMembers();
+  } else {
+    document.getElementById('family-create-section').style.display='block';
+    document.getElementById('family-info-section').style.display='none';
+  }
+  document.getElementById('modal-family').classList.add('show');
+};
+
+function generateCode(){
+  return Math.random().toString(36).substring(2,8).toUpperCase();
+}
+
+window.createFamily=async()=>{
+  const btn=document.getElementById('create-family-btn');
+  btn.disabled=true;btn.textContent='Создаём...';
+  try{
+    const code=generateCode();
+    const name=currentUser.displayName||currentUser.email?.split('@')[0]||'Пользователь';
+    const famRef=await addDoc(collection(db,'families'),{
+      code,
+      createdBy:currentUser.uid,
+      members:[{uid:currentUser.uid,name,role:'admin'}],
+      createdAt:serverTimestamp()
+    });
+    familyId=famRef.id;
+    await updateDoc(doc(db,'users',currentUser.uid),{familyId:famRef.id});
+    familyData={code,members:[{uid:currentUser.uid,name,role:'admin'}]};
+    document.getElementById('family-create-section').style.display='none';
+    document.getElementById('family-info-section').style.display='block';
+    document.getElementById('family-code-display').textContent=code;
+    renderFamilyMembers();
+    updateFamilyUI();
+    showToast('✓ Семья создана! Код: '+code);
+  }catch(e){showToast('Ошибка создания семьи');console.log(e);}
+  btn.disabled=false;btn.textContent='Создать семью';
+};
+
+window.joinFamily=async()=>{
+  const code=document.getElementById('family-code-inp').value.trim().toUpperCase();
+  if(!code||code.length<4){showToast('Введи код приглашения');return}
+  try{
+    // Find family by code
+    const{getDocs}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const q=query(collection(db,'families'),where('code','==',code));
+    const snap=await getDocs(q);
+    if(snap.empty){showToast('Семья с таким кодом не найдена');return}
+    const famDoc=snap.docs[0];
+    familyId=famDoc.id;
+    familyData=famDoc.data();
+    const name=currentUser.displayName||currentUser.email?.split('@')[0]||'Пользователь';
+    const members=familyData.members||[];
+    if(members.find(m=>m.uid===currentUser.uid)){
+      showToast('Ты уже в этой семье');
+    } else {
+      members.push({uid:currentUser.uid,name,role:'member'});
+      await updateDoc(doc(db,'families',familyId),{members});
+      familyData.members=members;
+    }
+    await updateDoc(doc(db,'users',currentUser.uid),{familyId});
+    document.getElementById('family-create-section').style.display='none';
+    document.getElementById('family-info-section').style.display='block';
+    document.getElementById('family-code-display').textContent=code;
+    renderFamilyMembers();
+    updateFamilyUI();
+    // Reload transactions to include family members
+    loadFamilyTransactions();
+    showToast('✓ Добро пожаловать в семью!');
+  }catch(e){showToast('Ошибка. Проверь код.');console.log(e);}
+};
+
+function renderFamilyMembers(){
+  const list=document.getElementById('family-members-list');
+  if(!list||!familyData?.members)return;
+  list.innerHTML=familyData.members.map(m=>`
+    <div class="member-item">
+      <div class="member-avatar">${(m.name||'?')[0].toUpperCase()}</div>
+      <div>
+        <div class="member-name">${m.name}</div>
+        <div class="member-you">${m.uid===currentUser.uid?'Это ты':m.role==='admin'?'Администратор':'Участник'}</div>
+      </div>
+    </div>`).join('');
+}
+
+window.copyFamilyCode=()=>{
+  const code=document.getElementById('family-code-display').textContent;
+  navigator.clipboard?.writeText(code);
+  showToast('✓ Код скопирован: '+code);
+};
+
+window.leaveFamily=async()=>{
+  if(!confirm('Покинуть семью?'))return;
+  try{
+    if(familyData?.members){
+      const members=familyData.members.filter(m=>m.uid!==currentUser.uid);
+      await updateDoc(doc(db,'families',familyId),{members});
+    }
+    await updateDoc(doc(db,'users',currentUser.uid),{familyId:null});
+    familyId=null;familyData=null;
+    document.getElementById('family-create-section').style.display='block';
+    document.getElementById('family-info-section').style.display='none';
+    updateFamilyUI();
+    // Reload only own transactions
+    loadTransactions();
+    document.getElementById('family-sub').textContent='Пригласи близких';
+    showToast('Ты покинул семью');
+  }catch(e){showToast('Ошибка');}
+};
+
+function loadFamilyTransactions(){
+  if(!currentUser)return;
+  const members=familyData?.members?.map(m=>m.uid)||[currentUser.uid];
+  // Load transactions for all family members
+  const q=query(collection(db,'transactions'),where('uid','in',members));
+  onSnapshot(q,snap=>{
+    transactions=snap.docs.map(d=>({id:d.id,...d.data()}))
+      .sort((a,b)=>{
+        const da=a.createdAt?.toDate?.()??new Date(0);
+        const db2=b.createdAt?.toDate?.()??new Date(0);
+        return db2-da;
+      });
+    renderTx();updateBalance();renderStats();renderBudgets();renderGoals();loadAIHint();
+  });
+}
+
+document.getElementById('modal-family').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('show');});
 
 // SUBSCRIPTIONS
 let subs=[];
