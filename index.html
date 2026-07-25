@@ -1407,11 +1407,15 @@ function updatePremiumUI(){
   if(userPlan==='founding'){
     sub.innerHTML='🏆 Founding Member · Навсегда бесплатно';
     sub.style.color='var(--amber)';
-  } else if(userPlan==='premium'){
+  } else if(userPlan==='premium'||userPlan==='invited'){
     sub.innerHTML='⭐ Premium активен';
     sub.style.color='var(--green)';
+  } else if(userPlan==='free'||userPlan===''){
+    sub.textContent='Разблокировать все функции · $2.99/мес';
+    sub.style.color='';
   } else {
     sub.textContent='Разблокировать все функции · $2.99/мес';
+    sub.style.color='';
   }
 }
 
