@@ -587,13 +587,8 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
           <div>✅ Статус Founding Member</div>
         </div>
       </div>
-      <div style="margin-top:16px">
-        <div style="font-size:.8rem;color:var(--muted);margin-bottom:10px">Хочешь дать другу тот же статус?</div>
-        <div style="display:flex;gap:8px">
-          <input class="field-inp" id="invite-email" placeholder="Email друга" style="margin-bottom:0;flex:1"/>
-          <button onclick="sendInvite()" style="background:var(--amber2);color:var(--dark);border:none;border-radius:13px;padding:13px 16px;font-family:'Sora',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap">Пригласить</button>
-        </div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:6px">Или поделись инвайт-кодом: <strong id="invite-code-display" style="color:var(--amber);cursor:pointer" onclick="copyInviteCode()">загрузка...</strong></div>
+      <div style="margin-top:14px;background:rgba(52,199,134,.08);border:1px solid rgba(52,199,134,.2);border-radius:12px;padding:12px;font-size:.78rem;color:var(--green);text-align:center">
+        🎉 Этот статус выдан лично основателем Fina
       </div>
     </div>
 
@@ -1410,7 +1405,6 @@ window.openPremiumModal=()=>{
 
   if(userPlan==='founding'){
     document.getElementById('premium-founding').style.display='block';
-    loadInviteCode();
   } else if(userPlan==='premium'||userPlan==='invited'){
     document.getElementById('premium-paid').style.display='block';
   } else {
@@ -1419,48 +1413,28 @@ window.openPremiumModal=()=>{
   document.getElementById('modal-premium').classList.add('show');
 };
 
-async function loadInviteCode(){
-  if(!currentUser)return;
-  try{
-    const userDoc=await getDoc(doc(db,'users',currentUser.uid));
-    let inviteCode=userDoc.data()?.inviteCode;
-    if(!inviteCode){
-      inviteCode=Math.random().toString(36).substring(2,8).toUpperCase();
-      await updateDoc(doc(db,'users',currentUser.uid),{inviteCode});
-    }
-    const el=document.getElementById('invite-code-display');
-    if(el)el.textContent=inviteCode;
-  }catch(e){console.log(e);}
-}
-
-window.copyInviteCode=()=>{
-  const code=document.getElementById('invite-code-display')?.textContent;
-  if(code){navigator.clipboard?.writeText(code);showToast('✓ Код скопирован: '+code);}
-};
-
-window.sendInvite=async()=>{
-  const email=document.getElementById('invite-email')?.value.trim();
-  if(!email||!email.includes('@')){showToast('Введи email друга');return}
-  showToast('✓ Приглашение отправлено на '+email);
-  document.getElementById('invite-email').value='';
-};
+// Invite codes are managed by admin in Firebase console
 
 window.redeemInvite=async()=>{
   const code=document.getElementById('redeem-code')?.value.trim().toUpperCase();
   if(!code||code.length<4){showToast('Введи код приглашения');return}
   try{
-    const{getDocs:gd}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const q=query(collection(db,'users'),where('inviteCode','==',code));
-    const snap=await gd(q);
-    if(snap.empty){showToast('Код не найден. Проверь и попробуй снова.');return}
-    // Valid code - give invited plan
-    await updateDoc(doc(db,'users',currentUser.uid),{plan:'invited',invitedBy:code});
-    userPlan='invited';
+    const inviteRef=doc(db,'invites',code);
+    const inviteDoc=await getDoc(inviteRef);
+    if(!inviteDoc.exists()){showToast('Код не найден. Проверь и попробуй снова.');return}
+    const inviteData=inviteDoc.data();
+    if(inviteData.used){showToast('Этот код уже использован.');return}
+    const plan=inviteData.plan||'founding';
+    // Mark code as used
+    await updateDoc(inviteRef,{used:true,usedBy:currentUser.uid,usedAt:serverTimestamp()});
+    // Give user the plan
+    await updateDoc(doc(db,'users',currentUser.uid),{plan,invitedBy:code});
+    userPlan=plan;
     updatePremiumUI();
     document.getElementById('premium-free').style.display='none';
-    document.getElementById('premium-paid').style.display='block';
-    showToast('🎉 Premium активирован!');
-  }catch(e){showToast('Ошибка активации. Попробуй снова.');}
+    document.getElementById('premium-founding').style.display='block';
+    showToast('🎉 Доступ активирован!');
+  }catch(e){showToast('Ошибка активации. Попробуй снова.');console.log(e);}
 };
 
 document.getElementById('modal-premium').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('show');});
