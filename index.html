@@ -572,6 +572,20 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
   <div class="modal">
     <div class="modal-handle"></div>
 
+    <!-- TRIAL view -->
+    <div id="premium-trial" style="display:none;text-align:center;padding:8px 0">
+      <div style="font-size:3rem;margin-bottom:12px">🎁</div>
+      <div style="font-family:'DM Serif Display',serif;font-size:1.4rem;margin-bottom:8px">Premium Trial</div>
+      <div style="font-size:.84rem;color:var(--muted);line-height:1.6;margin-bottom:16px">Ты среди первых 500 пользователей Fina. Все Premium функции бесплатно на 3 месяца.</div>
+      <div style="background:var(--pale);border-radius:14px;padding:14px;margin-bottom:14px;text-align:left">
+        <div style="font-size:.72rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Активно до</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:1.3rem;color:var(--dark)" id="trial-end-date">—</div>
+      </div>
+      <div style="background:rgba(52,199,134,.08);border:1px solid rgba(52,199,134,.2);border-radius:12px;padding:12px;font-size:.8rem;color:var(--green);line-height:1.5">
+        После окончания trial можно продолжить за ⭐ 150 Stars/мес
+      </div>
+    </div>
+
     <!-- FOUNDING MEMBER view -->
     <div id="premium-founding" style="display:none;text-align:center;padding:8px 0">
       <div style="font-size:3rem;margin-bottom:12px">🏆</div>
@@ -954,7 +968,7 @@ async function loginWithTelegram(tgUser){
 
       const cred=await createUserWithEmailAndPassword(auth,email,password);
       await updateProfile(cred.user,{displayName:name});
-      await setDoc(doc(db,'users',cred.user.uid),{
+      const userData = {
         name,
         email,
         currency:'$',
@@ -962,7 +976,13 @@ async function loginWithTelegram(tgUser){
         telegramId:tgUser.id,
         telegramUsername:tgUser.username||'',
         createdAt:serverTimestamp()
-      });
+      };
+      if(plan==='trial'){
+        const trialEnd=new Date();
+        trialEnd.setMonth(trialEnd.getMonth()+3);
+        userData.trialEndsAt=trialEnd.toISOString();
+      }
+      await setDoc(doc(db,'users',cred.user.uid),userData);
     }
   }catch(e){
     showErr('Ошибка входа через Telegram');
@@ -1431,9 +1451,21 @@ function updatePremiumUI(){
   } else if(userPlan==='premium'||userPlan==='invited'){
     sub.innerHTML='⭐ Premium активен';
     sub.style.color='var(--green)';
-  } else if(userPlan==='free'||userPlan===''){
-    sub.textContent='Разблокировать все функции · $2.99/мес';
-    sub.style.color='';
+  } else if(userPlan==='trial'){
+    if(window._trialEndsAt){
+      const daysLeft=Math.ceil((new Date(window._trialEndsAt)-new Date())/(1000*60*60*24));
+      if(daysLeft>0){
+        sub.innerHTML=`🎁 Trial · ещё ${daysLeft} дн. бесплатно`;
+        sub.style.color='var(--green)';
+      } else {
+        sub.innerHTML='Trial истёк · Перейди на Premium';
+        sub.style.color='var(--red)';
+        userPlan='free';
+      }
+    } else {
+      sub.innerHTML='🎁 Premium · 3 месяца бесплатно';
+      sub.style.color='var(--green)';
+    }
   } else {
     sub.textContent='Разблокировать все функции · $2.99/мес';
     sub.style.color='';
@@ -1441,12 +1473,21 @@ function updatePremiumUI(){
 }
 
 function isPremium(){
-  return userPlan==='founding'||userPlan==='premium'||userPlan==='invited';
+  if(userPlan==='founding'||userPlan==='premium'||userPlan==='invited') return true;
+  if(userPlan==='trial'){
+    // Check if trial is still active
+    if(window._trialEndsAt){
+      return new Date() < new Date(window._trialEndsAt);
+    }
+    return true; // Default to active if no date stored
+  }
+  return false;
 }
 
 window.openPremiumModal=async()=>{
   document.getElementById('modal-premium').classList.add('show');
   document.getElementById('premium-founding').style.display='none';
+  document.getElementById('premium-trial').style.display='none';
   document.getElementById('premium-free').style.display='none';
   document.getElementById('premium-paid').style.display='none';
 
@@ -1460,6 +1501,12 @@ window.openPremiumModal=async()=>{
 
   if(userPlan==='founding'){
     document.getElementById('premium-founding').style.display='block';
+  } else if(userPlan==='trial'){
+    document.getElementById('premium-trial').style.display='block';
+    const endEl=document.getElementById('trial-end-date');
+    if(endEl&&window._trialEndsAt){
+      endEl.textContent=new Date(window._trialEndsAt).toLocaleDateString('ru',{day:'numeric',month:'long',year:'numeric'});
+    }
   } else if(userPlan==='premium'||userPlan==='invited'){
     document.getElementById('premium-paid').style.display='block';
   } else {
