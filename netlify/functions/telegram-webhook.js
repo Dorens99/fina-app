@@ -180,7 +180,8 @@ exports.handler = async (event) => {
           body: JSON.stringify({
             fields: {
               telegramId: { integerValue: telegramId },
-              plan: { stringValue: 'founding' },
+              plan: { stringValue: 'trial' },
+              trialEndsAt: { stringValue: new Date(Date.now() + 90*24*60*60*1000).toISOString() },
               firstName: { stringValue: firstName },
               createdAt: { stringValue: new Date().toISOString() }
             }
