@@ -1086,14 +1086,15 @@ window.showTab=t=>{
   if(t==='stats')renderStats();
   if(t==='goals')renderGoals();
   if(t==='profile'){
-    // Always reload plan fresh from Firebase when opening profile
     const sub=document.getElementById('premium-sub');
     if(sub)sub.textContent='...';
     getDoc(doc(db,'users',currentUser.uid)).then(s=>{
       if(s.exists()){
-        userPlan=s.data().plan||'free';
-        updatePremiumUI();
+        const data=s.data();
+        userPlan=data.plan||'free';
+        if(data.trialEndsAt) window._trialEndsAt=data.trialEndsAt;
       }
+      updatePremiumUI();
     }).catch(()=>updatePremiumUI());
   }
 };
@@ -1625,10 +1626,11 @@ function updatePremiumUI(){
     if(window._trialEndsAt){
       const daysLeft=Math.ceil((new Date(window._trialEndsAt)-new Date())/(1000*60*60*24));
       if(daysLeft>0){
-        sub.innerHTML=`🎁 Trial · ещё ${daysLeft} дн. бесплатно`;
+        const endDate=new Date(window._trialEndsAt).toLocaleDateString('ru',{day:'numeric',month:'long'});
+        sub.innerHTML=`🎁 Premium до ${endDate} · осталось ${daysLeft} дн.`;
         sub.style.color='var(--green)';
       } else {
-        sub.innerHTML='Trial истёк · Перейди на Premium';
+        sub.innerHTML='⚠️ Trial истёк · Перейди на Premium';
         sub.style.color='var(--red)';
         userPlan='free';
       }
