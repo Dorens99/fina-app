@@ -1514,10 +1514,15 @@ window.openAdminPanel=async()=>{
 
 async function loadAdminStats(){
   try{
-    // Get all users
+    console.log('Admin: starting load...');
+    document.getElementById('admin-total').textContent='...';
+    
+    // Get all users - simple approach
     const usersSnap=await getDocs(collection(db,'users'));
+    console.log('Admin: got users snap, size=', usersSnap.size);
     const allUsers=usersSnap.docs.map(d=>d.data());
     const total=allUsers.length;
+    console.log('Admin: total users=', total);
     
     // Count by plan
     const plans={founding:0,trial:0,premium:0,free:0,invited:0};
@@ -1597,8 +1602,10 @@ async function loadAdminStats(){
       <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Мест Founding осталось</span><strong style="color:var(--amber)">${Math.max(0,500-total)}</strong></div>`;
     
   }catch(e){
-    console.error('Admin stats error:',e);
-    showToast('Ошибка загрузки статистики');
+    console.error('Admin stats error:', e.message, e);
+    document.getElementById('admin-plans').innerHTML=`<div style="color:var(--red);font-size:.8rem">Ошибка: ${e.message}</div>`;
+    document.getElementById('admin-users').innerHTML='';
+    document.getElementById('admin-activity').innerHTML='';
   }
 };
 
