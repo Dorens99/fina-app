@@ -891,7 +891,7 @@ function hideResetMode(){
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signInWithPopup,GoogleAuthProvider,onAuthStateChanged,signOut,updateProfile,sendPasswordResetEmail,updatePassword,EmailAuthProvider,reauthenticateWithCredential,linkWithCredential}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import{getFirestore,collection,addDoc,query,where,onSnapshot,doc,setDoc,getDoc,updateDoc,serverTimestamp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import{getFirestore,collection,addDoc,query,where,onSnapshot,doc,setDoc,getDoc,getDocs,updateDoc,serverTimestamp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const fbConfig={
   apiKey:window.__FB_API_KEY__,
@@ -1514,10 +1514,8 @@ window.openAdminPanel=async()=>{
 
 async function loadAdminStats(){
   try{
-    const{getDocs:gd,orderBy:ob,limit:lim,query:q2}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    
     // Get all users
-    const usersSnap=await gd(collection(db,'users'));
+    const usersSnap=await getDocs(collection(db,'users'));
     const allUsers=usersSnap.docs.map(d=>d.data());
     const total=allUsers.length;
     
@@ -1584,7 +1582,7 @@ async function loadAdminStats(){
     }).join('');
     
     // Activity stats
-    const txSnap=await gd(collection(db,'transactions'));
+    const txSnap=await getDocs(collection(db,'transactions'));
     const totalTx=txSnap.size;
     const todayTx=txSnap.docs.filter(d=>{
       const data=d.data();
