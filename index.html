@@ -129,6 +129,9 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
 .member-avatar{width:36px;height:36px;background:var(--amber2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;color:var(--dark);flex-shrink:0}
 .member-name{flex:1;font-size:.86rem;font-weight:600}
 .member-you{font-size:.7rem;color:var(--muted)}
+.admin-plan-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)}
+.admin-plan-row:last-child{border-bottom:none}
+.admin-plan-badge{font-size:.7rem;font-weight:700;padding:3px 8px;border-radius:20px}
 .premium-badge{display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,var(--amber),var(--amber2));color:var(--dark);font-size:.65rem;font-weight:700;padding:3px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
 .auto-found{background:linear-gradient(135deg,rgba(52,199,134,.08),rgba(52,199,134,.03));border:1px solid rgba(52,199,134,.2);border-radius:14px;padding:14px;margin-bottom:8px}
 .auto-found-title{font-size:.72rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
@@ -486,6 +489,11 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
               <div><div class="settings-title">Пароль</div><div class="settings-sub" id="password-sub">Установить или сменить пароль</div></div>
               <div class="settings-arrow">›</div>
             </div>
+            <div class="settings-item" id="admin-btn" style="display:none;background:rgba(124,58,237,.08);border-color:rgba(124,58,237,.2)" onclick="openAdminPanel()">
+              <div class="settings-ico">⚡</div>
+              <div><div class="settings-title" style="color:#7c3aed">Admin панель</div><div class="settings-sub">Статистика и управление</div></div>
+              <div class="settings-arrow">›</div>
+            </div>
             <div class="settings-item" onclick="openFamilyModal()">
               <div class="settings-ico">👨‍👩‍👧</div>
               <div><div class="settings-title">Семейный аккаунт</div><div class="settings-sub" id="family-sub">Пригласи близких</div></div>
@@ -564,6 +572,53 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
     <input class="field-inp" id="pass-confirm" type="password" placeholder="Повтори новый пароль" autocomplete="new-password"/>
     <button class="save-btn" onclick="savePassword()">Сохранить пароль</button>
     <button onclick="document.getElementById('modal-password').classList.remove('show')" style="width:100%;background:transparent;border:none;padding:14px;font-family:'Sora',sans-serif;font-size:.86rem;color:var(--muted);cursor:pointer;margin-top:8px">Отмена</button>
+  </div>
+</div>
+
+<!-- ADMIN MODAL -->
+<div class="modal-overlay" id="modal-admin">
+  <div class="modal" style="max-height:85vh">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <div style="font-size:1.5rem">⚡</div>
+      <div style="font-family:'DM Serif Display',serif;font-size:1.3rem">Admin панель</div>
+    </div>
+
+    <!-- Stats cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div style="background:var(--dark);border-radius:14px;padding:14px;text-align:center">
+        <div style="font-size:.7rem;color:#666;margin-bottom:4px">Всего пользователей</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:1.8rem;color:var(--amber2)" id="admin-total">—</div>
+      </div>
+      <div style="background:var(--dark);border-radius:14px;padding:14px;text-align:center">
+        <div style="font-size:.7rem;color:#666;margin-bottom:4px">Сегодня новых</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:1.8rem;color:var(--green)" id="admin-today">—</div>
+      </div>
+    </div>
+
+    <!-- Plan breakdown -->
+    <div style="background:white;border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:16px">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">По тарифам</div>
+      <div id="admin-plans" style="display:flex;flex-direction:column;gap:8px">
+        <div style="color:var(--muted);font-size:.84rem;text-align:center">Загрузка...</div>
+      </div>
+    </div>
+
+    <!-- Recent users -->
+    <div style="background:white;border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:16px">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Последние пользователи</div>
+      <div id="admin-users" style="display:flex;flex-direction:column;gap:8px">
+        <div style="color:var(--muted);font-size:.84rem;text-align:center">Загрузка...</div>
+      </div>
+    </div>
+
+    <!-- Transactions stats -->
+    <div style="background:white;border:1px solid var(--border);border-radius:14px;padding:14px">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Активность</div>
+      <div id="admin-activity" style="display:flex;flex-direction:column;gap:6px;font-size:.84rem">
+        <div style="color:var(--muted);text-align:center">Загрузка...</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1046,6 +1101,7 @@ window.showTab=t=>{
 // UI UPDATE
 function updateUI(){
   if(!currentUser)return;
+  checkAdminAccess();
   const name=currentUser.displayName||currentUser.email?.split('@')[0]||'User';
   const ini=name[0].toUpperCase();
   document.getElementById('user-avatar').textContent=ini;
@@ -1440,6 +1496,115 @@ if(window.Telegram?.WebApp?.initData){
   const tgBtn=document.getElementById('tg-login-btn');
   if(tgBtn) tgBtn.style.display='flex';
 }
+
+// ADMIN PANEL
+const ADMIN_UID = 'vWRamINy4BbggNuGS88jn3NtpY52';
+
+function checkAdminAccess(){
+  if(currentUser?.uid===ADMIN_UID){
+    const btn=document.getElementById('admin-btn');
+    if(btn)btn.style.display='flex';
+  }
+}
+
+window.openAdminPanel=async()=>{
+  document.getElementById('modal-admin').classList.add('show');
+  await loadAdminStats();
+};
+
+async function loadAdminStats(){
+  try{
+    const{getDocs:gd,orderBy:ob,limit:lim,query:q2}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    
+    // Get all users
+    const usersSnap=await gd(collection(db,'users'));
+    const allUsers=usersSnap.docs.map(d=>d.data());
+    const total=allUsers.length;
+    
+    // Count by plan
+    const plans={founding:0,trial:0,premium:0,free:0,invited:0};
+    allUsers.forEach(u=>{
+      const p=u.plan||'free';
+      plans[p]=(plans[p]||0)+1;
+    });
+    
+    // Today's new users
+    const today=new Date();
+    today.setHours(0,0,0,0);
+    const todayNew=allUsers.filter(u=>{
+      if(!u.createdAt)return false;
+      const d=u.createdAt.toDate?.()??new Date(u.createdAt);
+      return d>=today;
+    }).length;
+    
+    // Update UI
+    document.getElementById('admin-total').textContent=total;
+    document.getElementById('admin-today').textContent=todayNew;
+    
+    // Plans breakdown
+    const planColors={
+      founding:'background:rgba(245,166,35,.15);color:var(--amber)',
+      trial:'background:rgba(52,199,134,.15);color:var(--green)',
+      premium:'background:rgba(99,102,241,.15);color:#6366f1',
+      invited:'background:rgba(52,199,134,.15);color:var(--green)',
+      free:'background:rgba(154,144,128,.15);color:var(--muted)'
+    };
+    const planLabels={founding:'🏆 Founding',trial:'🎁 Trial',premium:'⭐ Premium',invited:'🎁 Invited',free:'🆓 Free'};
+    
+    document.getElementById('admin-plans').innerHTML=Object.entries(plans)
+      .filter(([_,count])=>count>0)
+      .sort((a,b)=>b[1]-a[1])
+      .map(([plan,count])=>`
+        <div class="admin-plan-row">
+          <span class="admin-plan-badge" style="${planColors[plan]||''}">${planLabels[plan]||plan}</span>
+          <strong>${count} чел.</strong>
+        </div>`).join('');
+    
+    // Recent users (last 5)
+    const sorted=allUsers
+      .filter(u=>u.createdAt)
+      .sort((a,b)=>{
+        const da=a.createdAt?.toDate?.()??new Date(a.createdAt);
+        const db2=b.createdAt?.toDate?.()??new Date(b.createdAt);
+        return db2-da;
+      })
+      .slice(0,5);
+    
+    document.getElementById('admin-users').innerHTML=sorted.map(u=>{
+      const d=u.createdAt?.toDate?.()??new Date(u.createdAt);
+      const dateStr=d.toLocaleDateString('ru',{day:'numeric',month:'short'});
+      const plan=u.plan||'free';
+      return`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+        <div style="width:30px;height:30px;background:var(--pale);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;color:var(--amber);flex-shrink:0">${(u.name||'?')[0].toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.name||u.email||'—'}</div>
+          <div style="font-size:.68rem;color:var(--muted)">${dateStr} · ${plan}</div>
+        </div>
+      </div>`;
+    }).join('');
+    
+    // Activity stats
+    const txSnap=await gd(collection(db,'transactions'));
+    const totalTx=txSnap.size;
+    const todayTx=txSnap.docs.filter(d=>{
+      const data=d.data();
+      if(!data.createdAt)return false;
+      const dt=data.createdAt.toDate?.()??new Date(data.createdAt);
+      return dt>=today;
+    }).length;
+    
+    document.getElementById('admin-activity').innerHTML=`
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Всего транзакций</span><strong>${totalTx}</strong></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Транзакций сегодня</span><strong style="color:var(--green)">${todayTx}</strong></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Мест Founding осталось</span><strong style="color:var(--amber)">${Math.max(0,500-total)}</strong></div>`;
+    
+  }catch(e){
+    console.error('Admin stats error:',e);
+    showToast('Ошибка загрузки статистики');
+  }
+};
+
+document.getElementById('modal-admin').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('show');});
 
 // PREMIUM & INVITES
 function updatePremiumUI(){
