@@ -933,22 +933,32 @@ window.doTelegramAuth=async()=>{
 
 async function loginWithTelegram(tgUser){
   try{
-    // Create/login Firebase user with Telegram ID as email
     const email=`tg_${tgUser.id}@fina.app`;
     const password=`tg_${tgUser.id}_${tgUser.id}`;
     const name=`${tgUser.first_name||''} ${tgUser.last_name||''}`.trim()||tgUser.username||'Пользователь';
     
     try{
-      // Try login first
       await signInWithEmailAndPassword(auth,email,password);
     }catch(e){
-      // If not exists - register
+      // New user - check if they have pending founding status
+      let plan='free';
+      try{
+        const pendingSnap=await getDoc(doc(db,'pendingFounders',String(tgUser.id)));
+        if(pendingSnap.exists()){
+          plan=pendingSnap.data().plan||'founding';
+          // Delete pending record
+          const{deleteDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+          await deleteDoc(doc(db,'pendingFounders',String(tgUser.id)));
+        }
+      }catch(e2){console.log('No pending founder status');}
+
       const cred=await createUserWithEmailAndPassword(auth,email,password);
       await updateProfile(cred.user,{displayName:name});
       await setDoc(doc(db,'users',cred.user.uid),{
         name,
         email,
         currency:'$',
+        plan,
         telegramId:tgUser.id,
         telegramUsername:tgUser.username||'',
         createdAt:serverTimestamp()
