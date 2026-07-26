@@ -1,5 +1,5 @@
 const FIREBASE_URL = `https://firestore.googleapis.com/v1/projects/fina-app-eb51c/databases/(default)/documents`;
-const FOUNDING_LIMIT = 500;
+const FOUNDING_LIMIT = 500; 
 
 async function getFirebaseToken() {
   // Use Firebase REST API with API key
