@@ -219,7 +219,7 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
 .num-del{color:var(--red);font-family:'Sora',sans-serif;font-size:1rem}
 
 .field-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:7px}
-.field-inp{background:white;border:1.5px solid var(--border);border-radius:13px;padding:13px 15px;font-family:'Sora',sans-serif;font-size:.88rem;color:var(--dark);outline:none;width:100%;margin-bottom:14px}
+.field-inp{background:white;border:1.5px solid var(--border);border-radius:13px;padding:13px 15px;font-family:'Sora',sans-serif;font-size:16px;color:var(--dark);outline:none;width:100%;margin-bottom:14px}
 .field-inp:focus{border-color:var(--amber2)}
 
 .cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:14px}
@@ -933,7 +933,7 @@ function guessCategory(text,type){
   return null;
 }
 
-function autoDetectCategory(){
+window.autoDetectCategory=function(){
   if(catManual)return; // юзер уже выбрал категорию вручную — не перебиваем
   const text=document.getElementById('tx-comment').value;
   const guess=guessCategory(text,txType);
@@ -944,7 +944,7 @@ function autoDetectCategory(){
     btn.classList.add('active');
     selectedCat=guess;
   }
-}
+};
 
 // ENTER APP
 async function enterApp(user){
