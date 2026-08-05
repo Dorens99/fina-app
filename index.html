@@ -944,7 +944,7 @@ const CAT_KEYWORDS={
   '🛒':['biedronka','lidl','żabka','zabka','carrefour','auchan','kaufland','netto','dino','stokrotka','пятерочка','магнит','ашан','перекресток','вкусвилл','супермаркет','продукты','grocery','market'],
   '🏠':['czynsz','komunalne','czynsz najmu','аренда','квартплата','коммуналка','электричество','tauron','pgnig','orange','play','t-mobile','plus','internet','rent','utilities'],
   '🚗':['uber','bolt','taxi','yandex','такси','paliwo','benzyna','orlen','bp','shell','circle k','metro','bus','автобус','заправка','парковка','parking','fuel'],
-  '☕':['starbucks','kawiarnia','restauracja','mcdonald','kfc','burger king','costa','кафе','ресторан','кофейня','coffee','restaurant','pizza','sushi'],
+  '☕':['starbucks','kawiarnia','restauracja','mcdonald','kfc','burger king','costa','кафе','ресторан','кофейня','coffee','restaurant','pizza','sushi','lodziarnia','lody','мороженое'],
   '💊':['apteka','pharmacy','аптека','клиника','dentist','стоматолог','лекарства','doctor','clinic','лекарство','ziko','dbam o zdrowie'],
   '🎮':['netflix','spotify','cinema city','multikino','kino','кино','концерт','playstation','steam','xbox','game','подписка','hbo','youtube premium'],
   '👕':['zara','h&m','reserved','cropp','mohito','house','sinsay','одежда','обувь','clothes','shoes','nike','adidas']
@@ -1324,14 +1324,20 @@ function parseRevolutCSV(text){
   const lines=text.split(/\r?\n/).filter(l=>l.trim().length>0);
   if(lines.length<2)return[];
   const headers=parseCSVLine(lines[0]).map(h=>h.trim().toLowerCase());
-  const idx=name=>headers.indexOf(name);
-  const iDesc=idx('description'),iAmount=idx('amount'),iCurrency=idx('currency'),iState=idx('state'),iStarted=idx('started date'),iCompleted=idx('completed date');
+  const findCol=aliases=>{for(const a of aliases){const i=headers.indexOf(a);if(i>=0)return i;}return -1;};
+  const iDesc=findCol(['description','описание']);
+  const iAmount=findCol(['amount','сумма']);
+  const iCurrency=findCol(['currency','валюта']);
+  const iState=findCol(['state','статус']);
+  const iStarted=findCol(['started date','дата начала']);
+  const iCompleted=findCol(['completed date','дата выполнения']);
+  const COMPLETED_VALUES=['COMPLETED','ВЫПОЛНЕНО','ZAKOŃCZONA','ZAKONCZONA'];
   const rows=[];
   for(let i=1;i<lines.length;i++){
     const cols=parseCSVLine(lines[i]);
     if(cols.length<2)continue;
     const state=iState>=0?(cols[iState]||'').trim().toUpperCase():'COMPLETED';
-    if(state&&state!=='COMPLETED')continue; // пропускаем PENDING/REVERTED/DECLINED
+    if(state&&!COMPLETED_VALUES.includes(state))continue; // пропускаем PENDING/REVERTED/DECLINED/В ОБРАБОТКЕ
     const amountRaw=parseFloat((cols[iAmount]||'0').replace(',','.'));
     if(!amountRaw)continue;
     const dateStr=(iCompleted>=0&&cols[iCompleted])?cols[iCompleted]:cols[iStarted];
