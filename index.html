@@ -506,7 +506,7 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
             </div>
             <div class="settings-item" onclick="openImportModal()">
               <div class="settings-ico">📄</div>
-              <div><div class="settings-title">Импорт выписки</div><div class="settings-sub">Загрузить CSV из Revolut</div></div>
+              <div><div class="settings-title">Импорт выписки</div><div class="settings-sub">Загрузить CSV из банка</div></div>
               <div class="settings-arrow">›</div>
             </div>
             <div class="settings-item" onclick="openPremiumModal()" style="cursor:pointer">
@@ -555,6 +555,8 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
     </div>
     <div class="field-label">Категория</div>
     <div class="cat-grid" id="cat-grid"></div>
+    <div class="field-label">Дата операции</div>
+    <input class="field-inp" id="tx-date" type="date"/>
     <div class="field-label">Комментарий</div>
     <input class="field-inp" id="tx-comment" placeholder="Необязательно" oninput="autoDetectCategory()"/>
     <button class="save-btn" id="save-btn" onclick="saveTx()">Сохранить</button>
@@ -568,7 +570,7 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
     <div class="modal-title">Импорт выписки</div>
     <div id="import-step-pick">
       <p style="font-size:.82rem;color:var(--gray);margin-bottom:14px;line-height:1.5">
-        Выгрузите CSV-выписку из Revolut: Профиль → Statement → выберите период → Export → CSV. Затем выберите файл здесь.
+        Выгрузите CSV-выписку из своего банковского приложения (в разделе Statement / История операций / Экспорт) и выберите файл здесь.
       </p>
       <input type="file" accept=".csv,text/csv" id="import-file-input" style="display:none" onchange="handleImportFile(event)"/>
       <button class="save-btn" onclick="document.getElementById('import-file-input').click()">Выбрать CSV файл</button>
@@ -866,6 +868,8 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
     </div>
     <div class="field-label">Категория</div>
     <div class="cat-grid" id="edit-cat-grid"></div>
+    <div class="field-label">Дата операции</div>
+    <input class="field-inp" id="edit-tx-date" type="date"/>
     <div class="field-label">Комментарий</div>
     <input class="field-inp" id="edit-comment" placeholder="Необязательно"/>
     <button class="save-btn" onclick="saveEdit()" style="margin-bottom:10px">Сохранить изменения</button>
@@ -936,6 +940,17 @@ const provider=new GoogleAuthProvider();
 let currentUser=null,userPlan='free',userCurrency='$',transactions=[],txType='expense',amountStr='0',selectedCat='🛒',currentPeriod='month',chatHistory=[],catManual=false;
 
 const CATS_EXP=[{ico:'🛒',lbl:'Еда'},{ico:'🏠',lbl:'Жильё'},{ico:'🚗',lbl:'Транспорт'},{ico:'☕',lbl:'Кафе'},{ico:'💊',lbl:'Здоровье'},{ico:'🎮',lbl:'Развлечения'},{ico:'👕',lbl:'Одежда'},{ico:'📦',lbl:'Другое'}];
+function localISO(date){
+  const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0');
+  return`${y}-${m}-${d}`;
+}
+function todayLocalISO(){return localISO(new Date());}
+function combineDateWithNow(dateStr){
+  const now=new Date();
+  const[y,m,d]=(dateStr||todayLocalISO()).split('-').map(Number);
+  return new Date(y,m-1,d,now.getHours(),now.getMinutes(),now.getSeconds());
+}
+
 const CATS_INC=[{ico:'💼',lbl:'Зарплата'},{ico:'🎁',lbl:'Подарок'},{ico:'📈',lbl:'Инвестиции'},{ico:'🏦',lbl:'Перевод'},{ico:'💡',lbl:'Фриланс'},{ico:'🏠',lbl:'Аренда'},{ico:'📦',lbl:'Продажа'},{ico:'✨',lbl:'Другое'}];
 
 // AUTO-CATEGORIZATION — словарь ключевых слов (RU/PL/EN), покрывает популярные мерчанты.
@@ -1224,6 +1239,7 @@ window.openAddModal=()=>{
   document.getElementById('amount-display').textContent='0';
   document.getElementById('amount-display').className='amount-val';
   document.getElementById('tx-comment').value='';
+  document.getElementById('tx-date').value=todayLocalISO();
   catManual=false;
   setType('expense');
   document.getElementById('modal-add').classList.add('show');
@@ -1295,7 +1311,7 @@ window.saveTx=async()=>{
       uid:currentUser.uid,type:txType,amount,
       category:selectedCat,catName:cat.lbl,
       comment:document.getElementById('tx-comment').value.trim(),
-      currency:userCurrency,createdAt:serverTimestamp()
+      currency:userCurrency,createdAt:Timestamp.fromDate(combineDateWithNow(document.getElementById('tx-date').value))
     });
     document.getElementById('modal-add').classList.remove('show');
     showToast('✓ Сохранено');
@@ -1369,32 +1385,48 @@ window.handleImportFile=(e)=>{
   reader.onload=(ev)=>{
     const rows=parseRevolutCSV(ev.target.result);
     if(!rows.length){showToast('Не нашли операций в файле');return;}
-    const existingSig=new Set(transactions.map(t=>{
-      const d=t.createdAt?.toDate?.()??new Date();
-      return`${d.toISOString().slice(0,10)}|${t.type}|${Number(t.amount).toFixed(2)}`;
+    const existingList=transactions.map(t=>({
+      date:t.createdAt?.toDate?.()??new Date(),
+      type:t.type,
+      amount:Number(t.amount)
     }));
-    importParsedRows=rows.map(r=>({...r,isDup:existingSig.has(`${r.date.toISOString().slice(0,10)}|${r.type}|${r.amount.toFixed(2)}`)}));
+    const isDupCandidate=row=>existingList.some(e=>{
+      if(e.type!==row.type)return false;
+      if(Math.abs(e.amount-row.amount)>0.01)return false;
+      const diffDays=Math.abs(row.date.getTime()-e.date.getTime())/86400000;
+      return diffDays<=3; // окно ±3 дня — покрывает случай, когда операция внесена вручную не в день покупки
+    });
+    importParsedRows=rows.map(r=>{
+      const dup=isDupCandidate(r);
+      return{...r,isDupCandidate:dup,selected:!dup};
+    });
     renderImportPreview();
   };
   reader.readAsText(file);
 };
 
+window.toggleImportRow=(i)=>{
+  importParsedRows[i].selected=!importParsedRows[i].selected;
+  renderImportPreview();
+};
+
 function renderImportPreview(){
-  const toImport=importParsedRows.filter(r=>!r.isDup);
-  const dupCount=importParsedRows.length-toImport.length;
-  const totalExp=toImport.filter(r=>r.type==='expense').reduce((s,r)=>s+r.amount,0);
-  const totalInc=toImport.filter(r=>r.type==='income').reduce((s,r)=>s+r.amount,0);
+  const selectedRows=importParsedRows.filter(r=>r.selected);
+  const dupCount=importParsedRows.filter(r=>r.isDupCandidate).length;
+  const totalExp=selectedRows.filter(r=>r.type==='expense').reduce((s,r)=>s+r.amount,0);
+  const totalInc=selectedRows.filter(r=>r.type==='income').reduce((s,r)=>s+r.amount,0);
   document.getElementById('import-summary').textContent=
-    `Найдено ${importParsedRows.length} · к импорту: ${toImport.length}`+
-    (dupCount?` · дублей пропущено: ${dupCount}`:'')+
+    `Найдено ${importParsedRows.length} · выбрано к импорту: ${selectedRows.length}`+
+    (dupCount?` · похожи на уже внесённые: ${dupCount} (проверьте галочки)`:'')+
     ` · расходы: ${totalExp.toFixed(2)} · доходы: ${totalInc.toFixed(2)}`;
-  document.getElementById('import-preview-list').innerHTML=importParsedRows.slice(0,50).map(r=>{
+  document.getElementById('import-preview-list').innerHTML=importParsedRows.slice(0,50).map((r,i)=>{
     const cat=guessCategory(r.description,r.type)||(r.type==='expense'?'📦':'✨');
-    return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);${r.isDup?'opacity:.4':''}">
+    return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);${r.selected?'':'opacity:.45'}">
+      <input type="checkbox" ${r.selected?'checked':''} onchange="toggleImportRow(${i})" style="width:18px;height:18px;flex-shrink:0"/>
       <div style="font-size:1.1rem">${cat}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.description||'Без описания'}</div>
-        <div style="font-size:.72rem;color:var(--gray)">${r.date.toLocaleDateString('ru')}${r.isDup?' · уже есть':''}</div>
+        <div style="font-size:.72rem;color:var(--gray)">${r.date.toLocaleDateString('ru')}${r.isDupCandidate?' · похоже, уже внесено':''}</div>
       </div>
       <div style="font-size:.85rem;font-weight:700;color:${r.type==='expense'?'var(--red)':'var(--green)'}">${r.type==='expense'?'−':'+'}${r.amount.toFixed(2)} ${r.currency}</div>
     </div>`;
@@ -1402,12 +1434,12 @@ function renderImportPreview(){
   document.getElementById('import-step-pick').style.display='none';
   document.getElementById('import-step-preview').style.display='block';
   const btn=document.getElementById('import-confirm-btn');
-  btn.textContent=toImport.length?`Импортировать ${toImport.length} операций`:'Нечего импортировать';
-  btn.disabled=!toImport.length;
+  btn.textContent=selectedRows.length?`Импортировать ${selectedRows.length} операций`:'Нечего импортировать';
+  btn.disabled=!selectedRows.length;
 }
 
 window.confirmImport=async()=>{
-  const toImport=importParsedRows.filter(r=>!r.isDup);
+  const toImport=importParsedRows.filter(r=>r.selected);
   if(!toImport.length)return;
   const btn=document.getElementById('import-confirm-btn');
   btn.disabled=true;
@@ -1572,6 +1604,7 @@ window.openEditModal=(txId)=>{
 
   document.getElementById('edit-amount-display').textContent=editAmountStr;
   document.getElementById('edit-comment').value=tx.comment||'';
+  document.getElementById('edit-tx-date').value=localISO(tx.createdAt?.toDate?.()??new Date());
   setEditType(tx.type);
   buildEditCatGrid(tx.category);
   document.getElementById('modal-edit').classList.add('show');
@@ -1618,7 +1651,8 @@ window.saveEdit=async()=>{
     await updateDoc(doc(db,'transactions',editTxId),{
       type:editTxType,amount,
       category:editSelectedCat,catName:cat.lbl,
-      comment:document.getElementById('edit-comment').value.trim()
+      comment:document.getElementById('edit-comment').value.trim(),
+      createdAt:Timestamp.fromDate(combineDateWithNow(document.getElementById('edit-tx-date').value))
     });
     document.getElementById('modal-edit').classList.remove('show');
     showToast('✓ Изменено');
