@@ -1,5 +1,5 @@
 const { getAdmin } = require('./_firebaseAdmin');
-const { CATS_EXP, guessCategory } = require('./_categories');
+const { CATS_EXP, CATS_INC, guessCategory } = require('./_categories');
 
 const FOUNDING_LIMIT = 500;
 
@@ -29,7 +29,7 @@ async function getUserByTelegramId(telegramId, db) {
     if (snap.empty) return null;
     const doc = snap.docs[0];
     const data = doc.data();
-    return { uid: doc.id, plan: data.plan || 'free' };
+    return { uid: doc.id, plan: data.plan || 'free', currency: data.currency || '$' };
   } catch (e) { return null; }
 }
 
@@ -112,6 +112,92 @@ async function analyzeReceipt(base64Image) {
   return JSON.parse(cleaned);
 }
 
+// ---------- Быстрый ввод одной строкой («кофе 15», «зарплата 5000») ----------
+
+async function analyzeQuickAdd(text) {
+  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 200,
+      messages: [{
+        role: 'user',
+        content: `Пользователь пишет боту финансового трекера короткое сообщение, пытаясь быстро занести доход или расход. Сообщение: "${text}".
+Верни ТОЛЬКО валидный JSON без markdown-разметки и пояснений, в формате:
+{"type":"expense" или "income","amount":число,"currency":"3-буквенный код валюты, если указан явно в сообщении, иначе null","description":"краткое описание/название"}
+Если явно не указано иное — считай это расходом (expense).
+Если сообщение НЕ похоже на попытку занести трату или доход (обычное сообщение, вопрос, приветствие и т.п., или сумма не указана) — верни {"error":"not_transaction"}.`
+      }]
+    })
+  });
+  const data = await res.json();
+  const textBlock = data?.content?.find(c => c.type === 'text');
+  if (!textBlock) throw new Error('Claude не вернул текст: ' + JSON.stringify(data));
+  const cleaned = textBlock.text.replace(/```json|```/g, '').trim();
+  return JSON.parse(cleaned);
+}
+
+async function handleQuickAddText(update, BOT_TOKEN, db) {
+  const admin = getAdmin();
+  const msg = update.message;
+  const chatId = msg.chat.id;
+  const telegramId = msg.from.id;
+  const text = (msg.text || '').trim();
+
+  if (!text || text.length > 200) return; // слишком длинное — не похоже на быстрый ввод, молча пропускаем
+
+  const user = await getUserByTelegramId(telegramId, db);
+  if (!user) return; // не открывал приложение — не мешаем случайными ответами в незнакомом чате
+
+  let parsed;
+  try {
+    parsed = await analyzeQuickAdd(text);
+  } catch (e) {
+    console.error('Quick-add analysis failed:', e);
+    return;
+  }
+
+  if (parsed.error === 'not_transaction' || !parsed.amount) {
+    return; // похоже на обычное сообщение — бот молчит, не создаёт лишний шум в чате
+  }
+
+  const type = parsed.type === 'income' ? 'income' : 'expense';
+  const amount = Math.abs(parseFloat(parsed.amount));
+  const currency = parsed.currency || user.currency || '$';
+  const description = (parsed.description || text).toString().slice(0, 120);
+
+  const catsList = type === 'expense' ? CATS_EXP : CATS_INC;
+  const category = type === 'expense' ? (guessCategory(description, 'expense') || '📦') : '✨';
+  const catObj = catsList.find(c => c.ico === category) || catsList[catsList.length - 1];
+
+  const txRef = await db.collection('transactions').add({
+    uid: user.uid,
+    type,
+    amount,
+    category: catObj.ico,
+    catName: catObj.lbl,
+    comment: description,
+    currency,
+    source: 'telegram-quick-add',
+    createdAt: admin.firestore.Timestamp.fromDate(new Date())
+  });
+
+  const sign = type === 'expense' ? '−' : '+';
+  const replyText = `✅ ${catObj.ico} ${catObj.lbl} · ${description} · ${sign}${amount.toFixed(2)} ${currency}`;
+
+  await sendMessage(BOT_TOKEN, chatId, replyText, {
+    reply_markup: {
+      inline_keyboard: [[{ text: '🗑 Отменить', callback_data: `undo_tx:${txRef.id}` }]]
+    }
+  });
+}
+
 async function handlePhotoMessage(update, BOT_TOKEN, db) {
   const msg = update.message;
   const chatId = msg.chat.id;
@@ -188,11 +274,24 @@ async function handleCallbackQuery(update, BOT_TOKEN, db) {
   const data = cq.data || '';
   const chatId = cq.message.chat.id;
   const messageId = cq.message.message_id;
-  const [action, draftId] = data.split(':');
+  const [action, id] = data.split(':');
 
-  if (!draftId) { await answerCallback(BOT_TOKEN, cq.id); return; }
+  if (!id) { await answerCallback(BOT_TOKEN, cq.id); return; }
 
-  const draftRef = db.collection('pendingReceipts').doc(draftId);
+  // Отмена транзакции, добавленной через быстрый текстовый ввод
+  if (action === 'undo_tx') {
+    try {
+      await db.collection('transactions').doc(id).delete();
+      await editMessageText(BOT_TOKEN, chatId, messageId, '🗑 Отменено');
+      await answerCallback(BOT_TOKEN, cq.id, 'Удалено');
+    } catch (e) {
+      await answerCallback(BOT_TOKEN, cq.id, 'Не получилось удалить');
+    }
+    return;
+  }
+
+  // Дальше — подтверждение/правка черновика из pendingReceipts (фото чека)
+  const draftRef = db.collection('pendingReceipts').doc(id);
   const draftSnap = await draftRef.get();
 
   if (!draftSnap.exists) {
@@ -245,9 +344,15 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: 'ok' };
     }
 
-    // Нажатие на inline-кнопку («Сохранить» / «Исправить»)
+    // Нажатие на inline-кнопку («Сохранить» / «Исправить» / «Отменить»)
     if (update.callback_query) {
       await handleCallbackQuery(update, BOT_TOKEN, db);
+      return { statusCode: 200, body: 'ok' };
+    }
+
+    // Быстрый текстовый ввод («кофе 15») — любой текст, кроме команд вида /start
+    if (update.message?.text && !update.message.text.startsWith('/')) {
+      await handleQuickAddText(update, BOT_TOKEN, db);
       return { statusCode: 200, body: 'ok' };
     }
 
@@ -273,6 +378,7 @@ exports.handler = async (event) => {
       const trialEnd = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toLocaleDateString('ru');
       const featureList = `• 💰 Учёт доходов и расходов
 • 📸 Сфотографируй чек — AI сам занесёт трату
+• ✍️ Напиши боту «кофе 15» — тоже сработает
 • 🤖 AI анализирует траты и даёт советы
 • 🎯 Бюджет по категориям
 • ⭐ Цели накопления с планом достижения
