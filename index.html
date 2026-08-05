@@ -551,7 +551,7 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
     <div class="field-label">Категория</div>
     <div class="cat-grid" id="cat-grid"></div>
     <div class="field-label">Комментарий</div>
-    <input class="field-inp" id="tx-comment" placeholder="Необязательно"/>
+    <input class="field-inp" id="tx-comment" placeholder="Необязательно" oninput="autoDetectCategory()"/>
     <button class="save-btn" id="save-btn" onclick="saveTx()">Сохранить</button>
   </div>
 </div>
@@ -907,10 +907,44 @@ const db=getFirestore(fbApp);
 const provider=new GoogleAuthProvider();
 
 // STATE
-let currentUser=null,userPlan='free',userCurrency='$',transactions=[],txType='expense',amountStr='0',selectedCat='🛒',currentPeriod='month',chatHistory=[];
+let currentUser=null,userPlan='free',userCurrency='$',transactions=[],txType='expense',amountStr='0',selectedCat='🛒',currentPeriod='month',chatHistory=[],catManual=false;
 
 const CATS_EXP=[{ico:'🛒',lbl:'Еда'},{ico:'🏠',lbl:'Жильё'},{ico:'🚗',lbl:'Транспорт'},{ico:'☕',lbl:'Кафе'},{ico:'💊',lbl:'Здоровье'},{ico:'🎮',lbl:'Развлечения'},{ico:'👕',lbl:'Одежда'},{ico:'📦',lbl:'Другое'}];
 const CATS_INC=[{ico:'💼',lbl:'Зарплата'},{ico:'🎁',lbl:'Подарок'},{ico:'📈',lbl:'Инвестиции'},{ico:'🏦',lbl:'Перевод'},{ico:'💡',lbl:'Фриланс'},{ico:'🏠',lbl:'Аренда'},{ico:'📦',lbl:'Продажа'},{ico:'✨',lbl:'Другое'}];
+
+// AUTO-CATEGORIZATION — словарь ключевых слов (RU/PL/EN), покрывает популярные мерчанты.
+// Используется и для ручного ввода (см. autoDetectCategory), и для импорта выписок (см. guessCategory в importBankStatement).
+const CAT_KEYWORDS={
+  '🛒':['biedronka','lidl','żabka','zabka','carrefour','auchan','kaufland','netto','dino','stokrotka','пятерочка','магнит','ашан','перекресток','вкусвилл','супермаркет','продукты','grocery','market'],
+  '🏠':['czynsz','komunalne','czynsz najmu','аренда','квартплата','коммуналка','электричество','tauron','pgnig','orange','play','t-mobile','plus','internet','rent','utilities'],
+  '🚗':['uber','bolt','taxi','yandex','такси','paliwo','benzyna','orlen','bp','shell','circle k','metro','bus','автобус','заправка','парковка','parking','fuel'],
+  '☕':['starbucks','kawiarnia','restauracja','mcdonald','kfc','burger king','costa','кафе','ресторан','кофейня','coffee','restaurant','pizza','sushi'],
+  '💊':['apteka','pharmacy','аптека','клиника','dentist','стоматолог','лекарства','doctor','clinic','лекарство','ziko','dbam o zdrowie'],
+  '🎮':['netflix','spotify','cinema city','multikino','kino','кино','концерт','playstation','steam','xbox','game','подписка','hbo','youtube premium'],
+  '👕':['zara','h&m','reserved','cropp','mohito','house','sinsay','одежда','обувь','clothes','shoes','nike','adidas']
+};
+
+function guessCategory(text,type){
+  if(!text||type!=='expense')return null;
+  const t=text.toLowerCase();
+  for(const[ico,words]of Object.entries(CAT_KEYWORDS)){
+    if(words.some(w=>t.includes(w)))return ico;
+  }
+  return null;
+}
+
+function autoDetectCategory(){
+  if(catManual)return; // юзер уже выбрал категорию вручную — не перебиваем
+  const text=document.getElementById('tx-comment').value;
+  const guess=guessCategory(text,txType);
+  if(!guess)return;
+  const btn=[...document.querySelectorAll('#cat-grid .cat-btn')].find(b=>b.getAttribute('onclick')?.includes(`'${guess}'`));
+  if(btn && guess!==selectedCat){
+    document.querySelectorAll('#cat-grid .cat-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedCat=guess;
+  }
+}
 
 // ENTER APP
 async function enterApp(user){
@@ -1164,6 +1198,7 @@ window.openAddModal=()=>{
   document.getElementById('amount-display').textContent='0';
   document.getElementById('amount-display').className='amount-val';
   document.getElementById('tx-comment').value='';
+  catManual=false;
   setType('expense');
   document.getElementById('modal-add').classList.add('show');
 };
@@ -1204,7 +1239,7 @@ buildCatGrid();
 
 window.selectCat=(el,ico)=>{
   document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));
-  el.classList.add('active');selectedCat=ico;
+  el.classList.add('active');selectedCat=ico;catManual=true;
 };
 
 window.saveTx=async()=>{
