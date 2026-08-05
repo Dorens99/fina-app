@@ -504,6 +504,11 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
               <div><div class="settings-title">Подписки</div><div class="settings-sub">Регулярные платежи</div></div>
               <div class="settings-arrow">›</div>
             </div>
+            <div class="settings-item" onclick="openImportModal()">
+              <div class="settings-ico">📄</div>
+              <div><div class="settings-title">Импорт выписки</div><div class="settings-sub">Загрузить CSV из Revolut</div></div>
+              <div class="settings-arrow">›</div>
+            </div>
             <div class="settings-item" onclick="openPremiumModal()" style="cursor:pointer">
               <div class="settings-ico">⭐</div>
               <div>
@@ -553,6 +558,27 @@ body{background:var(--bg);font-family:'Sora',sans-serif;color:var(--dark)}
     <div class="field-label">Комментарий</div>
     <input class="field-inp" id="tx-comment" placeholder="Необязательно" oninput="autoDetectCategory()"/>
     <button class="save-btn" id="save-btn" onclick="saveTx()">Сохранить</button>
+  </div>
+</div>
+
+<!-- IMPORT STATEMENT MODAL -->
+<div class="modal-overlay" id="modal-import">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Импорт выписки</div>
+    <div id="import-step-pick">
+      <p style="font-size:.82rem;color:var(--gray);margin-bottom:14px;line-height:1.5">
+        Выгрузите CSV-выписку из Revolut: Профиль → Statement → выберите период → Export → CSV. Затем выберите файл здесь.
+      </p>
+      <input type="file" accept=".csv,text/csv" id="import-file-input" style="display:none" onchange="handleImportFile(event)"/>
+      <button class="save-btn" onclick="document.getElementById('import-file-input').click()">Выбрать CSV файл</button>
+    </div>
+    <div id="import-step-preview" style="display:none">
+      <div id="import-summary" style="font-size:.85rem;color:var(--dark);margin-bottom:10px;font-weight:600"></div>
+      <div id="import-preview-list" style="max-height:280px;overflow-y:auto;margin-bottom:14px"></div>
+      <button class="save-btn" id="import-confirm-btn" onclick="confirmImport()">Импортировать</button>
+      <button class="save-btn" style="background:var(--pale);color:var(--dark);margin-top:8px" onclick="resetImportModal()">Отмена</button>
+    </div>
   </div>
 </div>
 
@@ -891,7 +917,7 @@ function hideResetMode(){
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signInWithPopup,GoogleAuthProvider,onAuthStateChanged,signOut,updateProfile,sendPasswordResetEmail,updatePassword,EmailAuthProvider,reauthenticateWithCredential,linkWithCredential}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import{getFirestore,collection,addDoc,query,where,onSnapshot,doc,setDoc,getDoc,getDocs,updateDoc,serverTimestamp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import{getFirestore,collection,addDoc,query,where,onSnapshot,doc,setDoc,getDoc,getDocs,updateDoc,serverTimestamp,Timestamp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const fbConfig={
   apiKey:window.__FB_API_KEY__,
@@ -1204,6 +1230,7 @@ window.openAddModal=()=>{
 };
 
 document.getElementById('modal-add').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('show');});
+document.getElementById('modal-import').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('show');});
 document.getElementById('modal-currency').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('show');});
 document.getElementById('modal-password').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('show');});
 
@@ -1274,6 +1301,129 @@ window.saveTx=async()=>{
     showToast('✓ Сохранено');
   }catch(e){showToast('Ошибка сохранения');}
   btn.disabled=false;btn.textContent='Сохранить';
+};
+
+// IMPORT BANK STATEMENT (Revolut CSV)
+let importParsedRows=[];
+
+function parseCSVLine(line){
+  const result=[];let cur='';let inQuotes=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(c==='"'){
+      if(inQuotes&&line[i+1]==='"'){cur+='"';i++;}
+      else inQuotes=!inQuotes;
+    }else if(c===','&&!inQuotes){result.push(cur);cur='';}
+    else cur+=c;
+  }
+  result.push(cur);
+  return result;
+}
+
+function parseRevolutCSV(text){
+  const lines=text.split(/\r?\n/).filter(l=>l.trim().length>0);
+  if(lines.length<2)return[];
+  const headers=parseCSVLine(lines[0]).map(h=>h.trim().toLowerCase());
+  const idx=name=>headers.indexOf(name);
+  const iDesc=idx('description'),iAmount=idx('amount'),iCurrency=idx('currency'),iState=idx('state'),iStarted=idx('started date'),iCompleted=idx('completed date');
+  const rows=[];
+  for(let i=1;i<lines.length;i++){
+    const cols=parseCSVLine(lines[i]);
+    if(cols.length<2)continue;
+    const state=iState>=0?(cols[iState]||'').trim().toUpperCase():'COMPLETED';
+    if(state&&state!=='COMPLETED')continue; // пропускаем PENDING/REVERTED/DECLINED
+    const amountRaw=parseFloat((cols[iAmount]||'0').replace(',','.'));
+    if(!amountRaw)continue;
+    const dateStr=(iCompleted>=0&&cols[iCompleted])?cols[iCompleted]:cols[iStarted];
+    const d=new Date((dateStr||'').trim().replace(' ','T'));
+    if(isNaN(d.getTime()))continue;
+    const description=(cols[iDesc]||'').trim();
+    const currency=iCurrency>=0?(cols[iCurrency]||userCurrency).trim():userCurrency;
+    rows.push({date:d,description,amount:Math.abs(amountRaw),type:amountRaw<0?'expense':'income',currency});
+  }
+  return rows;
+}
+
+window.openImportModal=()=>{
+  resetImportModal();
+  document.getElementById('modal-import').classList.add('show');
+};
+
+window.resetImportModal=()=>{
+  importParsedRows=[];
+  document.getElementById('import-file-input').value='';
+  document.getElementById('import-step-pick').style.display='block';
+  document.getElementById('import-step-preview').style.display='none';
+};
+
+window.handleImportFile=(e)=>{
+  const file=e.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=(ev)=>{
+    const rows=parseRevolutCSV(ev.target.result);
+    if(!rows.length){showToast('Не нашли операций в файле');return;}
+    const existingSig=new Set(transactions.map(t=>{
+      const d=t.createdAt?.toDate?.()??new Date();
+      return`${d.toISOString().slice(0,10)}|${t.type}|${Number(t.amount).toFixed(2)}`;
+    }));
+    importParsedRows=rows.map(r=>({...r,isDup:existingSig.has(`${r.date.toISOString().slice(0,10)}|${r.type}|${r.amount.toFixed(2)}`)}));
+    renderImportPreview();
+  };
+  reader.readAsText(file);
+};
+
+function renderImportPreview(){
+  const toImport=importParsedRows.filter(r=>!r.isDup);
+  const dupCount=importParsedRows.length-toImport.length;
+  const totalExp=toImport.filter(r=>r.type==='expense').reduce((s,r)=>s+r.amount,0);
+  const totalInc=toImport.filter(r=>r.type==='income').reduce((s,r)=>s+r.amount,0);
+  document.getElementById('import-summary').textContent=
+    `Найдено ${importParsedRows.length} · к импорту: ${toImport.length}`+
+    (dupCount?` · дублей пропущено: ${dupCount}`:'')+
+    ` · расходы: ${totalExp.toFixed(2)} · доходы: ${totalInc.toFixed(2)}`;
+  document.getElementById('import-preview-list').innerHTML=importParsedRows.slice(0,50).map(r=>{
+    const cat=guessCategory(r.description,r.type)||(r.type==='expense'?'📦':'✨');
+    return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);${r.isDup?'opacity:.4':''}">
+      <div style="font-size:1.1rem">${cat}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.description||'Без описания'}</div>
+        <div style="font-size:.72rem;color:var(--gray)">${r.date.toLocaleDateString('ru')}${r.isDup?' · уже есть':''}</div>
+      </div>
+      <div style="font-size:.85rem;font-weight:700;color:${r.type==='expense'?'var(--red)':'var(--green)'}">${r.type==='expense'?'−':'+'}${r.amount.toFixed(2)} ${r.currency}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('import-step-pick').style.display='none';
+  document.getElementById('import-step-preview').style.display='block';
+  const btn=document.getElementById('import-confirm-btn');
+  btn.textContent=toImport.length?`Импортировать ${toImport.length} операций`:'Нечего импортировать';
+  btn.disabled=!toImport.length;
+}
+
+window.confirmImport=async()=>{
+  const toImport=importParsedRows.filter(r=>!r.isDup);
+  if(!toImport.length)return;
+  const btn=document.getElementById('import-confirm-btn');
+  btn.disabled=true;
+  let done=0;
+  for(const r of toImport){
+    const cat=guessCategory(r.description,r.type)||(r.type==='expense'?'📦':'✨');
+    const catsList=r.type==='expense'?CATS_EXP:CATS_INC;
+    const catObj=catsList.find(c=>c.ico===cat)||catsList[catsList.length-1];
+    try{
+      await addDoc(collection(db,'transactions'),{
+        uid:currentUser.uid,type:r.type,amount:r.amount,
+        category:catObj.ico,catName:catObj.lbl,
+        comment:r.description,currency:r.currency,
+        source:'import-revolut',createdAt:Timestamp.fromDate(r.date)
+      });
+      done++;
+      btn.textContent=`Импортируем... ${done}/${toImport.length}`;
+    }catch(e){console.error('Import row failed',e);}
+  }
+  showToast(`✓ Импортировано ${done} операций`);
+  resetImportModal();
+  document.getElementById('modal-import').classList.remove('show');
 };
 
 // STATS
