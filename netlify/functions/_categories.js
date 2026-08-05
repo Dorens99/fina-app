@@ -9,7 +9,7 @@ const CATS_EXP = [
   { ico: '☕', lbl: 'Кафе' },
   { ico: '💊', lbl: 'Здоровье' },
   { ico: '🎮', lbl: 'Развлечения' },
-  { ico: '👕', lbl: 'Одежда' },
+  { ico: '👕', lbl: 'Одежда и уход' },
   { ico: '📱', lbl: 'Связь' },
   { ico: '🧾', lbl: 'Услуги' },
   { ico: '✈️', lbl: 'Путешествия' },
@@ -24,12 +24,23 @@ const CAT_KEYWORDS = {
   '☕': ['starbucks','kawiarnia','restauracja','mcdonald','kfc','burger king','costa','кафе','ресторан','кофейня','coffee','restaurant','pizza','sushi','lodziarnia','lody','мороженое'],
   '💊': ['apteka','pharmacy','аптека','клиника','dentist','стоматолог','лекарства','doctor','clinic','лекарство','ziko','dbam o zdrowie'],
   '🎮': ['netflix','spotify','cinema city','multikino','kino','кино','концерт','playstation','steam','xbox','game','подписка','hbo','youtube premium'],
-  '👕': ['zara','h&m','reserved','cropp','mohito','house','sinsay','одежда','обувь','clothes','shoes','nike','adidas'],
+  '👕': ['zara','h&m','reserved','cropp','mohito','house','sinsay','одежда','обувь','clothes','shoes','nike','adidas','fryzjer','salon fryzjerski','stylistka','barber','fryzura','стрижка','парикмахер','салон красоты','маникюр','manicure','paznokcie','kosmetyczka','барбершоп'],
   '📱': ['orange','play','t-mobile','plus','internet','telefon','wifi','wi-fi','роуминг','tele2','netia','связь','мобильный','tanio dzwoni'],
   '🧾': ['urząd','urzad','ministerstwo','sąd','sad','opłaty','oplaty','oplaty.ms.gov.pl','podatek','zus','налог','пошлина','госпошлина','hosting','home.pl','godaddy','ovh','domena','księgowość','ksiegowosc','бухгалтер','услуги','abonament','нотариус'],
   '✈️': ['booking.com','airbnb','ryanair','wizzair','wizz air','lot.com','отель','hotel','авиабилет','samolot','lotnisko','аэропорт','pkp','поезд','отпуск','vacation','flight','билет на самолет'],
   '🎓': ['kurs','szkolenie','udemy','coursera','курс','обучение','учебник','szkoła','szkola','uczelnia','czesne','книга','book','skillbox','лекция']
 };
+
+const CATS_INC = [
+  { ico: '💼', lbl: 'Зарплата' },
+  { ico: '🎁', lbl: 'Подарок' },
+  { ico: '📈', lbl: 'Инвестиции' },
+  { ico: '🏦', lbl: 'Перевод' },
+  { ico: '💡', lbl: 'Фриланс' },
+  { ico: '🏠', lbl: 'Аренда' },
+  { ico: '📦', lbl: 'Продажа' },
+  { ico: '✨', lbl: 'Другое' }
+];
 
 function guessCategory(text, type) {
   if (!text || type !== 'expense') return null;
@@ -40,4 +51,4 @@ function guessCategory(text, type) {
   return null;
 }
 
-module.exports = { CATS_EXP, CAT_KEYWORDS, guessCategory };
+module.exports = { CATS_EXP, CATS_INC, CAT_KEYWORDS, guessCategory };
