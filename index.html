@@ -939,7 +939,7 @@ const provider=new GoogleAuthProvider();
 // STATE
 let currentUser=null,userPlan='free',userCurrency='$',transactions=[],txType='expense',amountStr='0',selectedCat='🛒',currentPeriod='month',chatHistory=[],catManual=false;
 
-const CATS_EXP=[{ico:'🛒',lbl:'Еда'},{ico:'🏠',lbl:'Жильё'},{ico:'🚗',lbl:'Транспорт'},{ico:'☕',lbl:'Кафе'},{ico:'💊',lbl:'Здоровье'},{ico:'🎮',lbl:'Развлечения'},{ico:'👕',lbl:'Одежда'},{ico:'📱',lbl:'Связь'},{ico:'🧾',lbl:'Услуги'},{ico:'✈️',lbl:'Путешествия'},{ico:'🎓',lbl:'Образование'},{ico:'📦',lbl:'Другое'}];
+const CATS_EXP=[{ico:'🛒',lbl:'Еда'},{ico:'🏠',lbl:'Жильё'},{ico:'🚗',lbl:'Транспорт'},{ico:'☕',lbl:'Кафе'},{ico:'💊',lbl:'Здоровье'},{ico:'🎮',lbl:'Развлечения'},{ico:'👕',lbl:'Одежда и уход'},{ico:'📱',lbl:'Связь'},{ico:'🧾',lbl:'Услуги'},{ico:'✈️',lbl:'Путешествия'},{ico:'🎓',lbl:'Образование'},{ico:'📦',lbl:'Другое'}];
 function localISO(date){
   const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0');
   return`${y}-${m}-${d}`;
@@ -962,7 +962,7 @@ const CAT_KEYWORDS={
   '☕':['starbucks','kawiarnia','restauracja','mcdonald','kfc','burger king','costa','кафе','ресторан','кофейня','coffee','restaurant','pizza','sushi','lodziarnia','lody','мороженое'],
   '💊':['apteka','pharmacy','аптека','клиника','dentist','стоматолог','лекарства','doctor','clinic','лекарство','ziko','dbam o zdrowie'],
   '🎮':['netflix','spotify','cinema city','multikino','kino','кино','концерт','playstation','steam','xbox','game','подписка','hbo','youtube premium'],
-  '👕':['zara','h&m','reserved','cropp','mohito','house','sinsay','одежда','обувь','clothes','shoes','nike','adidas'],
+  '👕':['zara','h&m','reserved','cropp','mohito','house','sinsay','одежда','обувь','clothes','shoes','nike','adidas','fryzjer','salon fryzjerski','stylistka','barber','fryzura','стрижка','парикмахер','салон красоты','маникюр','manicure','paznokcie','kosmetyczka','барбершоп'],
   '📱':['orange','play','t-mobile','plus','internet','telefon','wifi','wi-fi','роуминг','tele2','netia','связь','мобильный','tanio dzwoni'],
   '🧾':['urząd','urzad','ministerstwo','sąd','sad','opłaty','oplaty','oplaty.ms.gov.pl','podatek','zus','налог','пошлина','госпошлина','hosting','home.pl','godaddy','ovh','domena','księgowość','ksiegowosc','бухгалтер','услуги','abonament','нотариус'],
   '✈️':['booking.com','airbnb','ryanair','wizzair','wizz air','lot.com','отель','hotel','авиабилет','samolot','lotnisko','аэропорт','pkp','поезд','отпуск','vacation','flight','билет на самолет'],
@@ -1509,8 +1509,10 @@ function renderStats(){
 
 // AI
 async function callAI(body){
+  if(!currentUser){return{error:'Не авторизован'};}
+  const token=await currentUser.getIdToken();
   const res=await fetch('/.netlify/functions/ai',{
-    method:'POST',headers:{'Content-Type':'application/json'},
+    method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
     body:JSON.stringify(body)
   });
   return await res.json();
