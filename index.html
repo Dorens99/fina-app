@@ -939,7 +939,7 @@ const provider=new GoogleAuthProvider();
 // STATE
 let currentUser=null,userPlan='free',userCurrency='$',transactions=[],txType='expense',amountStr='0',selectedCat='🛒',currentPeriod='month',chatHistory=[],catManual=false;
 
-const CATS_EXP=[{ico:'🛒',lbl:'Еда'},{ico:'🏠',lbl:'Жильё'},{ico:'🚗',lbl:'Транспорт'},{ico:'☕',lbl:'Кафе'},{ico:'💊',lbl:'Здоровье'},{ico:'🎮',lbl:'Развлечения'},{ico:'👕',lbl:'Одежда'},{ico:'📦',lbl:'Другое'}];
+const CATS_EXP=[{ico:'🛒',lbl:'Еда'},{ico:'🏠',lbl:'Жильё'},{ico:'🚗',lbl:'Транспорт'},{ico:'☕',lbl:'Кафе'},{ico:'💊',lbl:'Здоровье'},{ico:'🎮',lbl:'Развлечения'},{ico:'👕',lbl:'Одежда'},{ico:'📱',lbl:'Связь'},{ico:'🧾',lbl:'Услуги'},{ico:'✈️',lbl:'Путешествия'},{ico:'🎓',lbl:'Образование'},{ico:'📦',lbl:'Другое'}];
 function localISO(date){
   const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0');
   return`${y}-${m}-${d}`;
@@ -957,12 +957,16 @@ const CATS_INC=[{ico:'💼',lbl:'Зарплата'},{ico:'🎁',lbl:'Подар�
 // Используется и для ручного ввода (см. autoDetectCategory), и для импорта выписок (см. guessCategory в importBankStatement).
 const CAT_KEYWORDS={
   '🛒':['biedronka','lidl','żabka','zabka','carrefour','auchan','kaufland','netto','dino','stokrotka','пятерочка','магнит','ашан','перекресток','вкусвилл','супермаркет','продукты','grocery','market'],
-  '🏠':['czynsz','komunalne','czynsz najmu','аренда','квартплата','коммуналка','электричество','tauron','pgnig','orange','play','t-mobile','plus','internet','rent','utilities'],
+  '🏠':['czynsz','komunalne','czynsz najmu','аренда','квартплата','коммуналка','электричество','tauron','pgnig','rent','utilities'],
   '🚗':['uber','bolt','taxi','yandex','такси','paliwo','benzyna','orlen','bp','shell','circle k','metro','bus','автобус','заправка','парковка','parking','fuel'],
   '☕':['starbucks','kawiarnia','restauracja','mcdonald','kfc','burger king','costa','кафе','ресторан','кофейня','coffee','restaurant','pizza','sushi','lodziarnia','lody','мороженое'],
   '💊':['apteka','pharmacy','аптека','клиника','dentist','стоматолог','лекарства','doctor','clinic','лекарство','ziko','dbam o zdrowie'],
   '🎮':['netflix','spotify','cinema city','multikino','kino','кино','концерт','playstation','steam','xbox','game','подписка','hbo','youtube premium'],
-  '👕':['zara','h&m','reserved','cropp','mohito','house','sinsay','одежда','обувь','clothes','shoes','nike','adidas']
+  '👕':['zara','h&m','reserved','cropp','mohito','house','sinsay','одежда','обувь','clothes','shoes','nike','adidas'],
+  '📱':['orange','play','t-mobile','plus','internet','telefon','wifi','wi-fi','роуминг','tele2','netia','связь','мобильный','tanio dzwoni'],
+  '🧾':['urząd','urzad','ministerstwo','sąd','sad','opłaty','oplaty','oplaty.ms.gov.pl','podatek','zus','налог','пошлина','госпошлина','hosting','home.pl','godaddy','ovh','domena','księgowość','ksiegowosc','бухгалтер','услуги','abonament','нотариус'],
+  '✈️':['booking.com','airbnb','ryanair','wizzair','wizz air','lot.com','отель','hotel','авиабилет','samolot','lotnisko','аэропорт','pkp','поезд','отпуск','vacation','flight','билет на самолет'],
+  '🎓':['kurs','szkolenie','udemy','coursera','курс','обучение','учебник','szkoła','szkola','uczelnia','czesne','книга','book','skillbox','лекция']
 };
 
 function guessCategory(text,type){
